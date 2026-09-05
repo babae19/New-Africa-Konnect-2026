@@ -189,7 +189,7 @@ export default function Experts() {
     // Derived filtered list
     const filteredExperts = experts.filter(expert => {
         const matchesSearch = !filters.search ||
-            expert.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+            (expert.name || '').toLowerCase().includes(filters.search.toLowerCase()) ||
             expert.title?.toLowerCase().includes(filters.search.toLowerCase()) ||
             expert.skills?.some(s => s.toLowerCase().includes(filters.search.toLowerCase()));
 

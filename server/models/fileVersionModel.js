@@ -11,7 +11,7 @@ const createFileVersion = async (versionData) => {
             file_id, version_number, file_path, file_size, uploaded_by, changes_description
         )
         VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING *
+        RETURNING *, (SELECT project_id FROM files WHERE id = $1) AS project_id
     `;
 
     const result = await query(text, [

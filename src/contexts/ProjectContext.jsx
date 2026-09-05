@@ -31,7 +31,9 @@ export const ProjectProvider = ({ children }) => {
         }
 
         socket.on('receive_message', (data) => {
-            const { projectId, message } = data;
+            const message = data.message || data;
+            const projectId = data.projectId || data.project_id || message.projectId || message.project_id;
+            if (!projectId || !message) return;
 
             // Map backend fields to frontend
             const formattedMessage = {
@@ -128,7 +130,8 @@ export const ProjectProvider = ({ children }) => {
             socket.off('receive_message');
             socket.off('project_update');
             socket.off('project_invite');
-            socketService.disconnect();
+            socket.off('task_created');
+            socket.off('task_updated');
         };
     }, [currentProject?.id]);
 
@@ -144,7 +147,7 @@ export const ProjectProvider = ({ children }) => {
                     data = await api.projects.getClientProjects(user.id);
                     projectList = data?.projects || (Array.isArray(data) ? data : []);
                 } else {
-                    data = await api.projects.getAll();
+                    data = await api.projects.getInvitedProjects();
                     projectList = data?.projects || (Array.isArray(data) ? data : []);
                 }
                 setProjects(projectList);

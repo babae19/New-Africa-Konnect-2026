@@ -142,24 +142,34 @@ export const AuthProvider = ({ children }) => {
             setUser(null);
             setProfile(null);
             localStorage.removeItem('userInfo');
-            return { error: null };
         }
+        return { error: null };
     };
 
     const updateProfile = async (updates) => {
         try {
-            let updatedData;
-            
             // If expert, update professional profile
             if (user?.role === 'expert') {
                 const expertUpdates = {
                     ...updates,
                     profileImageUrl: updates.profile_image_url || updates.profileImageUrl
                 };
-                updatedData = await api.experts.updateProfile(user.id, expertUpdates);
+                await api.auth.updateProfile({
+                    name: updates.name,
+                    email: updates.email,
+                    phone: updates.phone,
+                    country: updates.country,
+                    city: updates.city,
+                    location: updates.location,
+                    company: updates.company,
+                    website: updates.website,
+                    bio: updates.bio,
+                    profile_image_url: updates.profile_image_url || updates.profileImageUrl
+                });
+                await api.experts.updateProfile(user.id, expertUpdates);
             } else {
                 // For all users, update the main identity profile
-                updatedData = await api.auth.updateProfile({
+                await api.auth.updateProfile({
                     name: updates.name || user.name,
                     email: updates.email || user.email,
                     profile_image_url: updates.profile_image_url || updates.profileImageUrl || user.profile_image_url,

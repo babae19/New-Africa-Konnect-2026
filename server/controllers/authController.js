@@ -1,6 +1,7 @@
 const {
     createUser,
     findUserByEmail,
+    findUserById,
     verifyPassword,
     generateVerificationToken,
     verifyEmail,
@@ -352,7 +353,13 @@ exports.getProfile = async (req, res) => {
             if (expertProfile) {
                 return res.json({
                     ...user,
-                    profile: expertProfile,
+                    ...expertProfile,
+                    id: user.id,
+                    user_id: user.id,
+                    profile_id: expertProfile.id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
                     // Identity sync: use expert image if available, otherwise fallback to base user image
                     profile_image_url: expertProfile.profile_image_url || user.profile_image_url
                 });
@@ -557,7 +564,7 @@ exports.resetPassword = async (req, res) => {
 exports.updateUserProfile = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { name, email, profileImageUrl, profile_image_url, bio } = req.body;
+        const { name, email, profileImageUrl, profile_image_url, bio, phone, country, city, location, company, website, title } = req.body;
 
         // Prevent users from changing their role via this endpoint
         if (req.body.role) {
@@ -568,7 +575,7 @@ exports.updateUserProfile = async (req, res) => {
             name,
             email,
             profile_image_url: profile_image_url || profileImageUrl, // Support both
-            bio
+            bio, phone, country, city, location, company, website, title
         });
 
         res.json({

@@ -68,6 +68,7 @@ exports.updateTask = async (req, res) => {
     try {
         const { id } = req.params;
         const task = await updateTask(id, req.body);
+        if (!task) return res.status(404).json({ message: 'Task not found or no valid updates supplied' });
 
         // Log activity if status changed
         if (req.body.status) {
@@ -95,6 +96,7 @@ exports.deleteTask = async (req, res) => {
     try {
         const { id } = req.params;
         const task = await deleteTask(id);
+        if (!task) return res.status(404).json({ message: 'Task not found' });
 
         const io = req.app.get('io');
         if (io) {
@@ -141,6 +143,7 @@ exports.updateMilestone = async (req, res) => {
     try {
         const { id } = req.params;
         const milestone = await updateMilestone(id, req.body);
+        if (!milestone) return res.status(404).json({ message: 'Milestone not found' });
 
         const io = req.app.get('io');
         if (io) {

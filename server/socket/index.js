@@ -1,4 +1,5 @@
 const socketIo = require('socket.io');
+const { query } = require('../database/db');
 let io;
 
 const setupSocket = (server) => {
@@ -40,9 +41,22 @@ const setupSocket = (server) => {
     io.on('connection', (socket) => {
         // console.log('New client connected:', socket.id);
 
-        socket.on('join_project', (projectId) => {
-            socket.join(`project_${projectId}`);
-            // console.log(`Socket ${socket.id} joined project_${projectId}`);
+        socket.on('join_project', async (projectId, acknowledge) => {
+            try {
+                const result = await query(
+                    'SELECT 1 FROM projects WHERE id = $1 AND (client_id = $2 OR selected_expert_id = $2)',
+                    [projectId, socket.user.id]
+                );
+                const allowed = socket.user.role === 'admin' || result.rows.length > 0;
+                if (!allowed) {
+                    if (typeof acknowledge === 'function') acknowledge({ ok: false, error: 'Access denied' });
+                    return;
+                }
+                socket.join(`project_${projectId}`);
+                if (typeof acknowledge === 'function') acknowledge({ ok: true });
+            } catch (error) {
+                if (typeof acknowledge === 'function') acknowledge({ ok: false, error: 'Unable to join project' });
+            }
         });
 
         socket.on('leave_project', (projectId) => {
@@ -50,7 +64,9 @@ const setupSocket = (server) => {
         });
 
         socket.on('join_user', (userId) => {
-            socket.join(`user_${userId}`);
+            if (socket.user.role === 'admin' || String(userId) === String(socket.user.id)) {
+                socket.join(`user_${userId}`);
+            }
         });
 
         socket.on('disconnect', () => {
@@ -58,22 +74,25 @@ const setupSocket = (server) => {
         });
 
         // Typing Indicators
-        socket.on('typing_start', ({ roomId, userId, userName }) => {
-            socket.to(`project_${roomId}`).emit('user_typing', { userId, userName });
+        socket.on('typing_start', ({ roomId, userName }) => {
+            if (!socket.rooms.has(`project_${roomId}`)) return;
+            socket.to(`project_${roomId}`).emit('user_typing', { userId: socket.user.id, userName });
         });
 
-        socket.on('typing_stop', ({ roomId, userId }) => {
-            socket.to(`project_${roomId}`).emit('user_stopped_typing', { userId });
+        socket.on('typing_stop', ({ roomId }) => {
+            if (!socket.rooms.has(`project_${roomId}`)) return;
+            socket.to(`project_${roomId}`).emit('user_stopped_typing', { userId: socket.user.id });
         });
 
         // Message Read Receipts
-        socket.on('message_read', ({ messageId, roomId, userId }) => {
-            socket.to(`project_${roomId}`).emit('message_read_update', { messageId, userId });
+        socket.on('message_read', ({ messageId, roomId }) => {
+            if (!socket.rooms.has(`project_${roomId}`)) return;
+            socket.to(`project_${roomId}`).emit('message_read_update', { messageId, userId: socket.user.id });
         });
 
         // Direct Messaging Events
-        socket.on('typing_dm', ({ toUserId, userId }) => {
-            socket.to(`user_${toUserId}`).emit('user_typing_dm', { userId });
+        socket.on('typing_dm', ({ toUserId }) => {
+            socket.to(`user_${toUserId}`).emit('user_typing_dm', { userId: socket.user.id });
         });
     });
 

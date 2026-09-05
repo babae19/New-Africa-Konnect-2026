@@ -96,7 +96,7 @@ exports.updateProfile = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to update this profile' });
         }
 
-        const { title, bio, location, skills, hourlyRate, profileImageUrl, profile_image_url, certifications, company, website, country, city } = req.body;
+        const { title, bio, location, skills, hourlyRate, profileImageUrl, profile_image_url, certifications, company, website, country, city, services, documents, name, email, phone } = req.body;
         const unifiedProfileImageUrl = profile_image_url || profileImageUrl;
 
         const profile = await updateExpertProfile(userId, {
@@ -110,7 +110,9 @@ exports.updateProfile = async (req, res) => {
             company,
             website,
             country,
-            city
+            city,
+            services,
+            documents
         });
 
         if (!profile) {
@@ -118,7 +120,7 @@ exports.updateProfile = async (req, res) => {
         }
 
         // Sync with base users table
-        await updateUser(userId, { profileImageUrl: unifiedProfileImageUrl, bio });
+        await updateUser(userId, { name, email, phone, profileImageUrl: unifiedProfileImageUrl, bio, country, city, company, website });
 
         // Emit update event
         const io = req.app.get('io');
@@ -147,7 +149,7 @@ exports.getAllExperts = async (req, res) => {
             location,
             minRate: minRate ? parseFloat(minRate) : undefined,
             maxRate: maxRate ? parseFloat(maxRate) : undefined,
-            limit: limit ? parseInt(limit) : 50,
+            limit: limit ? parseInt(limit) : undefined,
             offset: offset ? parseInt(offset) : 0
         };
 
@@ -155,6 +157,8 @@ exports.getAllExperts = async (req, res) => {
 
         const expertsWithNames = expertsData.map(e => ({
             ...e,
+            profile_id: e.id,
+            id: e.user_id,
             profile_image_url: e.profile_image_url || e.profileImageUrl,
             company: e.company || null,
             title: e.title || 'Expert'

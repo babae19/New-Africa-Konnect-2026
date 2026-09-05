@@ -30,21 +30,21 @@ const createUser = async (userData) => {
 
 // Find user by email
 const findUserByEmail = async (email) => {
-    const text = 'SELECT id, name, email, password_hash, role, profile_image_url, bio, created_at, updated_at FROM users WHERE email = $1';
+    const text = 'SELECT id, name, email, password_hash, role, profile_image_url, bio, phone, country, city, location, company, website, title, email_verified, last_login, created_at, updated_at FROM users WHERE email = $1';
     const result = await query(text, [email]);
     return result.rows[0];
 };
 
 // Find user by ID
 const findUserById = async (id) => {
-    const text = 'SELECT id, email, password_hash, name, role, profile_image_url, bio, created_at FROM users WHERE id = $1';
+    const text = 'SELECT id, email, password_hash, name, role, profile_image_url, bio, phone, country, city, location, company, website, title, email_verified, created_at, updated_at FROM users WHERE id = $1';
     const result = await query(text, [id]);
     return result.rows[0];
 };
 
 // Update user
 const updateUser = async (id, userData) => {
-    const { name, email, role, profileImageUrl, profile_image_url, bio } = userData;
+    const { name, email, role, profileImageUrl, profile_image_url, bio, phone, country, city, location, company, website, title } = userData;
     // Map both camelCase and snake_case for profileImageUrl
     const finalImageUrl = profile_image_url || profileImageUrl;
 
@@ -56,11 +56,18 @@ const updateUser = async (id, userData) => {
             role = COALESCE($3, role),
             profile_image_url = COALESCE($4, profile_image_url),
             bio = COALESCE($5, bio),
+            phone = COALESCE($6, phone),
+            country = COALESCE($7, country),
+            city = COALESCE($8, city),
+            location = COALESCE($9, location),
+            company = COALESCE($10, company),
+            website = COALESCE($11, website),
+            title = COALESCE($12, title),
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $6
-        RETURNING id, name, email, role, profile_image_url, bio
+        WHERE id = $13
+        RETURNING id, name, email, role, profile_image_url, bio, phone, country, city, location, company, website, title
     `;
-    const values = [name, email, role, finalImageUrl, bio, id];
+    const values = [name, email, role, finalImageUrl, bio, phone, country, city, location, company, website, title, id];
     const result = await query(text, values);
     return result.rows[0];
 };

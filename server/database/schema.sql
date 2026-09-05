@@ -26,6 +26,13 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(20) NOT NULL CHECK (role IN ('client', 'expert')),
     profile_image_url TEXT,
     bio TEXT,
+    phone VARCHAR(50),
+    country VARCHAR(100),
+    city VARCHAR(100),
+    location VARCHAR(255),
+    company VARCHAR(255),
+    website TEXT,
+    title VARCHAR(255),
     -- Verification & Security
     email_verified BOOLEAN DEFAULT FALSE,
     verification_token TEXT,
@@ -66,6 +73,7 @@ CREATE TABLE IF NOT EXISTS expert_profiles (
     country VARCHAR(100),
     city VARCHAR(100),
     company VARCHAR(100),
+    website TEXT,
     skills TEXT[],
     skill_categories JSONB DEFAULT '[]'::jsonb,
     hourly_rate NUMERIC(10, 2),
@@ -224,6 +232,7 @@ CREATE TABLE IF NOT EXISTS files (
     type VARCHAR(100),
     size BIGINT,
     data TEXT, -- Base64 encoded or content
+    url TEXT,
     uploaded_by UUID REFERENCES users(id) ON DELETE SET NULL,
     uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

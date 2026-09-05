@@ -7,6 +7,7 @@ import { useProject } from '../../contexts/ProjectContext';
 import { api } from '../../lib/api';
 import MeetingRoom from '../../components/common/MeetingRoom';
 import { useAuth } from '../../contexts/AuthContext';
+import { motion } from 'framer-motion';
 
 const Step3Interview = ({ onNext }) => {
     const { currentProject } = useProject();

@@ -123,7 +123,7 @@ const FeaturedExperts = () => {
                                             <span className="text-xs text-gray-400 italic">No skills listed</span>
                                         )}
                                     </div>
-                                    <Link to={`/experts?id=${expert.id}`} className="block w-full">
+                                    <Link to={`/profile/view/${expert.user_id || expert.id}`} className="block w-full">
                                         <Button className="w-full" variant="secondary" size="sm">View Profile</Button>
                                     </Link>
                                 </div>

@@ -54,7 +54,7 @@ exports.uploadFile = async (req, res) => {
             type: contentType,
             size,
             url: publicUrl, // Storing URL is key
-            uploadedBy: req.user ? req.user.name : 'System'
+            uploadedBy: req.user.id
         });
 
         // Real-time notification
@@ -82,6 +82,8 @@ exports.uploadImage = async (req, res) => {
 
         const type = matches[1];
         const buffer = Buffer.from(matches[2], 'base64');
+        if (!type.startsWith('image/')) return res.status(400).json({ message: 'Only image uploads are allowed' });
+        if (buffer.length > 5 * 1024 * 1024) return res.status(413).json({ message: 'Image must be 5MB or smaller' });
         const extension = type.split('/')[1] || 'png';
         const filename = `images/${uuidv4()}.${extension}`;
 
@@ -131,7 +133,7 @@ exports.downloadFile = async (req, res) => {
         }
 
         // If it's a Supabase URL, redirect
-        if (file.url.startsWith('http')) {
+        if (file.url && file.url.startsWith('http')) {
             return res.redirect(file.url);
         }
 
@@ -156,7 +158,7 @@ exports.deleteFile = async (req, res) => {
         }
 
         // Try to delete from Supabase if it's a supabase URL
-        if (file.url.includes('supabase')) {
+        if (file.url && file.url.includes('supabase')) {
             try {
                 // Extract path from URL - URL is like .../storage/v1/object/public/uploads/path/to/file
                 const path = file.url.split('/uploads/')[1];

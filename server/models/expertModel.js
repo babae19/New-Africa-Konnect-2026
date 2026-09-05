@@ -15,8 +15,8 @@ const createExpertProfile = async (profileData) => {
 
     const text = `
         INSERT INTO expert_profiles 
-        (user_id, title, bio, location, skills, hourly_rate, profile_image_url, certifications, vetting_status, country, city, company, services, documents)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'approved', $9, $10, $11, $12, $13)
+        (user_id, title, bio, location, skills, hourly_rate, profile_image_url, certifications, vetting_status, country, city, company, services, documents, website)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'approved', $9, $10, $11, $12, $13, $14)
         RETURNING *
     `;
     const values = [
@@ -26,7 +26,8 @@ const createExpertProfile = async (profileData) => {
         profileData.city || null,
         profileData.company || null,
         profileData.services ? JSON.stringify(profileData.services) : JSON.stringify([]),
-        profileData.documents ? JSON.stringify(profileData.documents) : JSON.stringify([])
+        profileData.documents ? JSON.stringify(profileData.documents) : JSON.stringify([]),
+        profileData.website || null
     ];
 
     try {
@@ -95,8 +96,11 @@ const updateExpertProfile = async (userId, profileData) => {
             city = COALESCE($9, city),
             company = COALESCE($10, company),
             services = COALESCE($11, services),
-            documents = COALESCE($12, documents)
-        WHERE user_id = $13
+            documents = COALESCE($12, documents),
+            website = COALESCE($13, website),
+            updated_at = CURRENT_TIMESTAMP,
+            last_profile_update = CURRENT_TIMESTAMP
+        WHERE user_id = $14
         RETURNING *
     `;
     const values = [
@@ -105,6 +109,7 @@ const updateExpertProfile = async (userId, profileData) => {
         country, city, company,
         services ? JSON.stringify(services) : null,
         documents ? JSON.stringify(documents) : null,
+        profileData.website,
         userId
     ];
     const result = await query(text, values);

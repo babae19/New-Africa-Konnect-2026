@@ -229,8 +229,7 @@ const UserProfile = () => {
             };
 
             if (isExpert) {
-                // For experts, send a single comprehensive update
-                await api.experts.updateProfile(user.id, {
+                await updateProfile({
                     ...payload,
                     title:       formData.title,
                     skills:      formData.skills,
@@ -238,8 +237,6 @@ const UserProfile = () => {
                     documents:   formData.documents,
                     hourlyRate:  parseFloat(formData.hourly_rate) || 0,
                 });
-                // Also sync base user identity fields
-                await api.auth.updateProfile(payload);
             } else {
                 // Client: update base user profile
                 await updateProfile(payload);

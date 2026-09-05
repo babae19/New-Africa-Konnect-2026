@@ -36,7 +36,7 @@ class ErrorBoundary extends React.Component {
                                 Go Home
                             </Button>
                         </div>
-                        {process.env.NODE_ENV === 'development' && (
+                        {import.meta.env.DEV && (
                             <pre className="mt-8 p-4 bg-gray-100 rounded text-left overflow-auto text-xs text-red-800 max-h-48">
                                 {this.state.error?.toString()}
                             </pre>

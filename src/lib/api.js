@@ -610,7 +610,7 @@ export const api = {
                 body: JSON.stringify({ ...data, projectId: projectId || data.projectId }),
             });
         },
-        getByProject: async (projectId) => apiRequest(`/projects/${projectId}/files`, {
+        getByProject: async (projectId) => apiRequest(`/files/project/${projectId}`, {
             headers: getHeaders(),
         }),
         getFiles: async (projectId) => apiRequest(`/files/project/${projectId}`, {

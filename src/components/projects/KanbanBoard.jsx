@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { api } from '../../lib/api';
 import { Plus, MoreVertical, Calendar, User, CheckCircle } from 'lucide-react';

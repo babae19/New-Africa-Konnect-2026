@@ -2,15 +2,15 @@ const { query } = require('../database/db');
 
 // Create file
 const createFile = async (fileData) => {
-    const { projectId, name, type, size, data, uploadedBy } = fileData;
+    const { projectId, name, type, size, data, url, uploadedBy } = fileData;
 
     const text = `
-        INSERT INTO files (project_id, name, type, size, data, uploaded_by)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id, project_id, name, type, size, uploaded_by, uploaded_at
+        INSERT INTO files (project_id, name, type, size, data, url, uploaded_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, project_id, name, type, size, url, uploaded_by, uploaded_at
     `; // Don't return data to keep response light
 
-    const values = [projectId, name, type, size, data, uploadedBy];
+    const values = [projectId, name, type, size, data, url, uploadedBy];
 
     const result = await query(text, values);
     return result.rows[0];
@@ -19,7 +19,7 @@ const createFile = async (fileData) => {
 // Get files by project
 const getFilesByProject = async (projectId) => {
     const text = `
-        SELECT id, project_id, name, type, size, uploaded_by, uploaded_at 
+        SELECT id, project_id, name, type, size, url, uploaded_by, uploaded_at
         FROM files 
         WHERE project_id = $1 
         ORDER BY uploaded_at DESC

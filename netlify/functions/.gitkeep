@@ -1,0 +1,11 @@
+# Netlify Functions (Serverless Functions)
+# If you want to add serverless functions, create them in this directory
+# Example: netlify/functions/hello.js
+
+# Each file exports a handler function:
+# exports.handler = async (event, context) => {
+#   return {
+#     statusCode: 200,
+#     body: JSON.stringify({ message: "Hello World" })
+#   };
+# };

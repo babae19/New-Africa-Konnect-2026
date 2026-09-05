@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --color-primary: #2B2D6A;
+  --color-accent: #2F306D;
+  --color-highlight: #D49831;
+  --color-success: #22C55E;
+}
+
+@layer base {
+  /* Industry Standard Typography Scale */
+  html {
+    font-size: 16px; /* Base font size - industry standard */
+    line-height: 1.6;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: 1rem; /* 16px */
+    @apply antialiased text-gray-900 bg-white;
+  }
+
+  /* Heading Scale (using 1.25 ratio - Minor Third) */
+  h1 {
+    font-size: 2.441rem; /* ~39px */
+    line-height: 1.2;
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: 1.953rem; /* ~31px */
+    line-height: 1.25;
+    font-weight: 700;
+  }
+
+  h3 {
+    font-size: 1.563rem; /* ~25px */
+    line-height: 1.3;
+    font-weight: 600;
+  }
+
+  h4 {
+    font-size: 1.25rem; /* 20px */
+    line-height: 1.4;
+    font-weight: 600;
+  }
+
+  h5 {
+    font-size: 1rem; /* 16px */
+    line-height: 1.5;
+    font-weight: 600;
+  }
+
+  h6 {
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.5;
+    font-weight: 600;
+  }
+
+  /* Body Text */
+  p {
+    font-size: 1rem; /* 16px */
+    line-height: 1.75;
+    margin-bottom: 1rem;
+  }
+
+  /* Small Text */
+  small {
+    font-size: 0.875rem; /* 14px */
+  }
+
+  /* Links */
+  a {
+    @apply transition-colors;
+  }
+
+  /* Input/Button Text */
+  input, button, textarea, select {
+    font-size: 1rem; /* 16px - prevents iOS zoom */
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-02-04T10:43:28.730Z",
+  "source": "Neon Database",
+  "tables": {
+    "users": [],
+    "expert_profiles": [],
+    "projects": [],
+    "contracts": [],
+    "messages": [],
+    "tasks": [],
+    "files": [],
+    "activities": [],
+    "interviews": []
+  }
+}

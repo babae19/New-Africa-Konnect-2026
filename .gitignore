@@ -21,6 +21,7 @@ build
 
 # Environment files
 .env
+.env.backup
 .env.local
 .env.development.local
 .env.test.local

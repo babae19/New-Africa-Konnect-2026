@@ -37,7 +37,7 @@ const PublicProfile = () => {
 
     const handleHire = async () => {
         if (!currentUser) {
-            navigate('/signin', { state: { returnUrl: `/expert/${id}` } });
+            navigate('/signin', { state: { returnUrl: `/profile/view/${id}` } });
             return;
         }
 
@@ -120,7 +120,7 @@ const PublicProfile = () => {
                     <div className="lg:col-span-1">
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24">
                             <div className="h-32 bg-gradient-to-br from-primary to-purple-700 relative">
-                                {profile.vettingStatus === 'verified' && (
+                                {['verified', 'approved'].includes(profile.vettingStatus) && (
                                     <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
                                         <CheckCircle size={12} /> Verified Expert
                                     </div>
@@ -167,7 +167,7 @@ const PublicProfile = () => {
 
                                     <div className="flex items-center gap-3 text-gray-600">
                                         <MapPin size={18} className="text-gray-400" />
-                                        <span>{profile.location || "Location not specified"}</span>
+                                        <span>{profile.location || [profile.city, profile.country].filter(Boolean).join(', ') || "Location not specified"}</span>
                                     </div>
                                     <div className="flex items-center gap-3 text-gray-600">
                                         <Calendar size={18} className="text-gray-400" />
@@ -187,7 +187,11 @@ const PublicProfile = () => {
                                     )}
                                 </div>
 
-                                {currentUser?.id !== profile.id && isExpert && (
+                                {currentUser?.id === profile.id ? (
+                                    <Button className="w-full" onClick={() => navigate('/profile')}>
+                                        Edit Profile
+                                    </Button>
+                                ) : isExpert && (
                                     <div className="space-y-3">
                                         <Button className="w-full shadow-lg shadow-primary/20" onClick={handleHire} disabled={hiring}>
                                             <Briefcase size={18} className="mr-2" />

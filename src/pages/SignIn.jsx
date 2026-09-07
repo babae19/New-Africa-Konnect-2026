@@ -29,11 +29,14 @@ export default function SignIn() {
             if (user) {
                 // Check for returnUrl in query params (for OAuth flow)
                 const params = new URLSearchParams(location.search);
-                const returnUrl = params.get('returnUrl');
+                const from = location.state?.from;
+                const returnUrl = params.get('returnUrl')
+                    || location.state?.returnUrl
+                    || (from ? `${from.pathname || ''}${from.search || ''}${from.hash || ''}` : null);
 
                 if (returnUrl) {
                     // Decode and navigate to the return URL
-                    navigate(decodeURIComponent(returnUrl));
+                    navigate(decodeURIComponent(returnUrl), { replace: true });
                 } else {
                     // Redirect based on onboarding status
                     if (!user.onboarding_completed && !user.user_metadata?.onboarding_completed) {

@@ -1,11 +1,20 @@
 const API_URL = import.meta.env.VITE_API_URL || 'https://africa-konnect-api.onrender.com/api';
 
+const getStoredUser = () => {
+    try {
+        return JSON.parse(localStorage.getItem('userInfo') || 'null');
+    } catch {
+        localStorage.removeItem('userInfo');
+        return null;
+    }
+};
+
 const getHeaders = (contentType = 'application/json') => {
     const headers = {};
     if (contentType) {
         headers['Content-Type'] = contentType;
     }
-    const user = JSON.parse(localStorage.getItem('userInfo'));
+    const user = getStoredUser();
     if (user?.token) {
         headers['Authorization'] = `Bearer ${user.token}`;
     }
@@ -70,7 +79,7 @@ const apiRequest = async (endpoint, options = {}) => {
 
         // Handle 401 Unauthorized - Attempt Automatic Refresh
         if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/refresh-token')) {
-            const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+            const userInfo = getStoredUser() || {};
             const refreshToken = userInfo.refreshToken;
 
             if (refreshToken) {

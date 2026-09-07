@@ -16,7 +16,7 @@ const {
     updateUserProfile,
     getPublicProfile
 } = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, optionalAuth } = require('../middleware/authMiddleware');
 const { authLimiter, passwordResetLimiter } = require('../middleware/rateLimitMiddleware');
 const { validateRegister, validateLogin } = require('../middleware/validationMiddleware');
 
@@ -25,7 +25,7 @@ router.post('/register', authLimiter, validateRegister, registerUser);
 router.post('/login', authLimiter, validateLogin, loginUser);
 router.post('/verify-email', verifyEmailToken);
 router.post('/refresh-token', refreshToken);
-router.get('/users/:id/public', protect, getPublicProfile);
+router.get('/users/:id/public', optionalAuth, getPublicProfile);
 
 // Password reset routes (public but rate limited)
 router.post('/forgot-password', passwordResetLimiter, requestPasswordReset);

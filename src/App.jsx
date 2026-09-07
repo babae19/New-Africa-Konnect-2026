@@ -103,11 +103,7 @@ function App() {
               />
               <Route
                 path="/profile/view/:id"
-                element={
-                  <PrivateRoute>
-                    <PublicProfile />
-                  </PrivateRoute>
-                }
+                element={<PublicProfile />}
               />
 
               {/* Bidding System Routes */}

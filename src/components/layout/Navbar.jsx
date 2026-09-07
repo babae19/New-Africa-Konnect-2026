@@ -161,7 +161,7 @@ const Navbar = () => {
                                                         animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
                                                         exit={{ opacity: 0, scale: 0.95, y: -20, filter: "blur(10px)" }}
                                                         transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                                                        className="absolute right-0 top-full mt-4 w-85 bg-white/80 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] border border-white/40 overflow-hidden z-50 origin-top-right ring-1 ring-black/5"
+                                                        className="absolute right-0 top-full mt-3 w-80 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden z-50 origin-top-right"
                                                     >
                                                         {isExpert ? (
                                                             <ExpertDropdown
@@ -289,13 +289,12 @@ const Navbar = () => {
 // --- Sub-components (Internal to this file or could be moved) ---
 
 const DropdownHeader = ({ profile, user, isExpert }) => (
-    <div className="relative overflow-hidden px-8 py-7 border-b border-white/20">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-blue-400/5 to-transparent"></div>
-        <div className="flex items-center gap-5 relative z-10">
+    <div className="px-5 py-5 border-b border-gray-100 bg-gray-50/70">
+        <div className="flex items-center gap-3">
             <div className="relative flex-shrink-0">
                 <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary via-blue-500 to-indigo-600 p-[3px] shadow-2xl shadow-primary/20"
+                    className="w-14 h-14 rounded-full bg-primary/15 p-0.5"
                 >
                     <div className="w-full h-full rounded-full overflow-hidden bg-white border-2 border-white">
                         {(profile?.profile_image_url || user?.profile_image_url) ? (
@@ -303,27 +302,26 @@ const DropdownHeader = ({ profile, user, isExpert }) => (
                                 src={profile?.profile_image_url || user?.profile_image_url}
                                 alt="Profile"
                                 className="w-full h-full object-cover"
-                                onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.name || user?.name || 'U')}&background=667eea&color=fff&size=80`; }}
+                                onError={(e) => { e.target.style.display = 'none'; }}
                             />
                         ) : (
                             <div className="w-full h-full bg-gradient-to-br from-primary/10 to-blue-600/10 flex items-center justify-center">
-                                <span className="text-transparent bg-clip-text bg-gradient-to-br from-primary to-blue-600 font-black text-3xl">
+                                <span className="text-primary font-bold text-xl">
                                     {(profile?.name || user?.name || user?.email)?.charAt(0).toUpperCase()}
                                 </span>
                             </div>
                         )}
                     </div>
                 </motion.div>
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-4 border-white/90 backdrop-blur-sm rounded-full shadow-lg"></div>
+                <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
             </div>
             <div className="flex-1 min-w-0">
-                <p className="text-xl font-black text-gray-900 truncate leading-tight tracking-tight">
+                <p className="text-base font-bold text-gray-900 truncate leading-tight">
                     {profile?.name || user?.name || 'User'}
                 </p>
-                <p className="text-xs font-medium text-gray-500 truncate mb-3">{user?.email}</p>
-                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${isExpert ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-blue-500/10 border-blue-500/30 text-blue-600'} font-black text-[10px] uppercase tracking-[0.15em]`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${isExpert ? 'bg-primary' : 'bg-blue-600'} animate-pulse shadow-[0_0_8px_currentColor]`}></div>
-                    {isExpert ? 'Expert Tier' : 'Client Plus'}
+                <p className="text-xs font-medium text-gray-500 truncate mb-2">{user?.email}</p>
+                <div className={`inline-flex items-center px-2 py-0.5 rounded-full ${isExpert ? 'bg-primary/10 text-primary' : 'bg-blue-50 text-blue-700'} font-semibold text-xs`}>
+                    {isExpert ? 'Expert account' : 'Client account'}
                 </div>
             </div>
         </div>
@@ -335,22 +333,22 @@ const DropdownLink = ({ to, icon: Icon, label, onClick, variant = "default" }) =
         to={to}
         onClick={onClick}
         className={cn(
-            "flex items-center gap-4 px-5 py-4 text-sm font-bold rounded-[1.25rem] transition-all duration-300 group mb-1.5",
+            "flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-xl transition-colors group mb-1",
             variant === "danger"
                 ? "text-red-600 hover:bg-red-50"
-                : "text-gray-700 hover:bg-white hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.1)] hover:text-primary active:scale-[0.98]"
+                : "text-gray-700 hover:bg-gray-100 hover:text-primary"
         )}
     >
         <div className={cn(
-            "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300",
+            "w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
             variant === "danger"
                 ? "bg-red-50 group-hover:bg-red-100"
-                : "bg-gray-100/50 group-hover:bg-primary/10 group-hover:rotate-6 shadow-sm group-hover:shadow-primary/20"
+                : "bg-gray-100 group-hover:bg-primary/10"
         )}>
-            <Icon size={20} className={variant === "danger" ? "text-red-500" : "text-gray-600 group-hover:text-primary transition-transform group-hover:scale-110"} />
+            <Icon size={18} className={variant === "danger" ? "text-red-500" : "text-gray-600 group-hover:text-primary"} />
         </div>
         <span className="flex-1 tracking-tight">{label}</span>
-        <ChevronRight size={14} className="text-gray-300 opacity-0 group-hover:opacity-100 transition-all -translate-x-3 group-hover:translate-x-0" />
+        <ChevronRight size={14} className="text-gray-400" />
     </Link>
 );
 
@@ -358,14 +356,14 @@ const ExpertDropdown = ({ profile, user, signOut, closeMenu }) => (
     <>
         <DropdownHeader profile={profile} user={user} isExpert={true} />
 
-        <div className="px-8 py-6 border-b border-gray-100/50 bg-gray-50/30">
+        <div className="px-5 py-4 border-b border-gray-100 bg-white">
             <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Live Performance</span>
+                <span className="text-xs font-semibold text-gray-500">Profile completion</span>
                 <span className="text-[10px] font-black text-primary bg-white px-3 py-1 rounded-full shadow-sm border border-primary/10">
-                    {profile?.profile_completeness || 0}% PRO
+                    {profile?.profile_completeness || 0}%
                 </span>
             </div>
-            <div className="h-2 w-full bg-gray-200/50 rounded-full overflow-hidden mb-6 shadow-inner p-[1px]">
+            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mb-1">
                 <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${profile?.profile_completeness || 0}%` }}
@@ -375,18 +373,6 @@ const ExpertDropdown = ({ profile, user, signOut, closeMenu }) => (
                     <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:20px_20px] animate-[slide_1s_linear_infinite]"></div>
                 </motion.div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group cursor-default">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Global Rating</p>
-                    <p className="text-lg font-black text-gray-900 flex items-center gap-1.5">
-                        <span className="text-yellow-400 font-serif">★</span> {profile?.rating || '5.0'}
-                    </p>
-                </div>
-                <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group cursor-default">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Impact</p>
-                    <p className="text-lg font-black text-gray-900">${profile?.total_earnings || '0.00'}</p>
-                </div>
-            </div>
         </div>
 
         <div className="p-3">
@@ -395,10 +381,11 @@ const ExpertDropdown = ({ profile, user, signOut, closeMenu }) => (
             <DropdownLink to="/my-bids" icon={ChevronRight} label="My Proposals" onClick={closeMenu} />
             <div className="my-2 border-t border-gray-100 mx-2"></div>
             <DropdownLink to="/profile" icon={User} label="My Profile" onClick={closeMenu} />
-            <DropdownLink to="/profile" icon={Settings} label="Settings" onClick={closeMenu} />
+            <DropdownLink to={`/profile/view/${user?.id}`} icon={ChevronRight} label="View Public Profile" onClick={closeMenu} />
             <div className="my-2 border-t border-gray-100 mx-2"></div>
-            <button onClick={signOut} className="w-full text-left">
-                <DropdownLink to="/" icon={LogOut} label="Log Out" variant="danger" />
+            <button onClick={signOut} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-xl text-red-600 hover:bg-red-50 transition-colors">
+                <span className="w-9 h-9 rounded-lg flex items-center justify-center bg-red-50"><LogOut size={18} /></span>
+                <span className="flex-1 text-left">Log Out</span>
             </button>
         </div>
     </>
@@ -430,11 +417,11 @@ const ClientDropdown = ({ profile, user, signOut, closeMenu }) => (
             <DropdownLink to="/marketplace" icon={User} label="Browse Projects" onClick={closeMenu} />
             <DropdownLink to="/collaboration" icon={User} label="Collaborations" onClick={closeMenu} />
             <div className="my-2 border-t border-gray-100 mx-2"></div>
-            <DropdownLink to="/profile" icon={User} label="My Profile" onClick={closeMenu} />
-            <DropdownLink to="/profile" icon={Settings} label="Workspace Settings" onClick={closeMenu} />
+            <DropdownLink to="/profile" icon={User} label="Edit Profile" onClick={closeMenu} />
             <div className="my-2 border-t border-gray-100 mx-2"></div>
-            <button onClick={signOut} className="w-full text-left">
-                <DropdownLink to="/" icon={LogOut} label="Log Out" variant="danger" />
+            <button onClick={signOut} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-xl text-red-600 hover:bg-red-50 transition-colors">
+                <span className="w-9 h-9 rounded-lg flex items-center justify-center bg-red-50"><LogOut size={18} /></span>
+                <span className="flex-1 text-left">Log Out</span>
             </button>
         </div>
     </>

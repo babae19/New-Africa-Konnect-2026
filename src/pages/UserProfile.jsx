@@ -229,7 +229,7 @@ const UserProfile = () => {
             };
 
             if (isExpert) {
-                await updateProfile({
+                const result = await updateProfile({
                     ...payload,
                     title:       formData.title,
                     skills:      formData.skills,
@@ -237,9 +237,11 @@ const UserProfile = () => {
                     documents:   formData.documents,
                     hourlyRate:  parseFloat(formData.hourly_rate) || 0,
                 });
+                if (result.error) throw result.error;
             } else {
                 // Client: update base user profile
-                await updateProfile(payload);
+                const result = await updateProfile(payload);
+                if (result.error) throw result.error;
             }
 
             // Refetch to ensure state is fully in sync

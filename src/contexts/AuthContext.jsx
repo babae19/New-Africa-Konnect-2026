@@ -37,15 +37,26 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const checkSession = useCallback(async () => {
+        let stored = null;
         try {
             const storedUserJson = localStorage.getItem('userInfo');
 
             if (storedUserJson) {
+                stored = JSON.parse(storedUserJson);
+                if (!stored?.token) {
+                    localStorage.removeItem('userInfo');
+                    return;
+                }
+
+                // Restore the signed-in experience immediately. The server
+                // verification below then refreshes authoritative profile data.
+                setUser(stored);
+                setProfile(stored);
+
                 // Verify the token and get consolidated profile from our backend
                 const dbProfile = await api.auth.getProfile();
 
                 // Merge with stored data to preserve the token/identity but use DB as source of truth for fields
-                const stored = JSON.parse(storedUserJson);
                 const newUser = { 
                     ...stored, 
                     ...dbProfile
@@ -59,19 +70,25 @@ export const AuthProvider = ({ children }) => {
             }
         } catch (error) {
             console.log("Authentication check failed:", error.message);
-            if (error.message && (error.message.includes('401') || error.message.includes('403') || error.message.includes('Auth'))) {
+            if (!stored || error instanceof SyntaxError) {
                 localStorage.removeItem('userInfo');
                 setUser(null);
+                setProfile(null);
+            } else if (error.message && (error.message.includes('Session revoked') || error.message.includes('token failed') || error.message.includes('expired'))) {
+                localStorage.removeItem('userInfo');
+                setUser(null);
+                setProfile(null);
             }
         } finally {
             setLoading(false);
         }
-    }, [loadProfile]);
+    }, []);
 
     useEffect(() => {
         const handleRefresh = (e) => {
             console.log("🔄 AuthContext: Token refreshed in background");
             setUser(e.detail);
+            setProfile(prev => ({ ...prev, ...e.detail }));
         };
 
         const handleLogout = () => {
@@ -174,7 +191,14 @@ export const AuthProvider = ({ children }) => {
                     email: updates.email || user.email,
                     profile_image_url: updates.profile_image_url || updates.profileImageUrl || user.profile_image_url,
                     profileImageUrl: updates.profile_image_url || updates.profileImageUrl || user.profile_image_url,
-                    bio: updates.bio || user.bio
+                    bio: updates.bio ?? user.bio,
+                    phone: updates.phone ?? user.phone,
+                    country: updates.country ?? user.country,
+                    city: updates.city ?? user.city,
+                    location: updates.location ?? user.location,
+                    company: updates.company ?? user.company,
+                    website: updates.website ?? user.website,
+                    title: updates.title ?? user.title
                 });
             }
 

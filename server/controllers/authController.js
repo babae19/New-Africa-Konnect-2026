@@ -14,7 +14,8 @@ const {
     generatePasswordResetToken,
     verifyPasswordResetToken,
     updateUser,
-    revokeSessionByToken
+    revokeSessionByToken,
+    findSessionByToken
 } = require('../models/userModel');
 const { createExpertProfile, getExpertProfile } = require('../models/expertModel');
 const { sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail } = require('../services/emailService');
@@ -299,6 +300,11 @@ exports.refreshToken = async (req, res) => {
 
         if (decoded.type !== 'refresh') {
             return res.status(401).json({ message: 'Invalid refresh token' });
+        }
+
+        const activeSession = await findSessionByToken(refreshToken);
+        if (!activeSession || activeSession.user_id !== decoded.id) {
+            return res.status(401).json({ message: 'Refresh session expired or revoked' });
         }
 
         // Find user by id from decoded token
@@ -599,7 +605,7 @@ exports.getPublicProfile = async (req, res) => {
         // User finding logic - reusing internal findUserById helper if exists, or query directly
         const { query } = require('../database/db');
 
-        const text = 'SELECT id, name, role, email_verified, created_at, bio, location, company, website, title, profile_image_url FROM users WHERE id = $1';
+        const text = 'SELECT id, name, role, email_verified, created_at, bio, location, country, city, company, website, title, profile_image_url FROM users WHERE id = $1';
         const result = await query(text, [id]);
 
         if (result.rows.length === 0) {
@@ -627,6 +633,8 @@ exports.getPublicProfile = async (req, res) => {
             joinedAt: user.created_at,
             bio: user.bio, // Default user bio
             location: user.location,
+            country: user.country,
+            city: user.city,
             company: user.company,
             website: user.website,
             title: user.title,

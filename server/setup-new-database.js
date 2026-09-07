@@ -39,7 +39,8 @@ async function setupDatabase() {
             '004_password_reset.sql',
             '004_realtime_features.sql',
             '005_audit_fixes.sql',
-            '007_profile_enhancements.sql'
+            '007_profile_enhancements.sql',
+            '012_profile_and_file_persistence.sql'
         ];
 
         for (const migration of migrations) {

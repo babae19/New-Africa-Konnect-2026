@@ -11,6 +11,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const { testConnection } = require('./database/db');
+const { ensureRuntimeSchema } = require('./database/ensureSchema');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 const { apiLimiter } = require('./middleware/rateLimitMiddleware');
 
@@ -180,6 +181,10 @@ const startServer = async () => {
             console.log('Make sure you have set the DB_PASSWORD in your .env file');
             process.exit(1);
         }
+
+        // Existing hosted databases may predate newer profile fields. Apply
+        // idempotent additions before accepting authentication requests.
+        await ensureRuntimeSchema();
 
         server.listen(PORT, '0.0.0.0', () => {
             console.log(`\n🚀 Server running on port ${PORT}`);

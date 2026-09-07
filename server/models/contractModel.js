@@ -89,37 +89,38 @@ const getContractsByClient = async (clientId) => {
 };
 
 // Update contract status
-const updateContractStatus = async (id, status, metadata = null) => {
-    let text;
-    let values;
-    let signedAtClause = "";
+const signContractParty = async (id, party, metadata) => {
+    const signatureColumn = party === 'client' ? 'client_signature' : 'expert_signature';
+    const signedAtColumn = party === 'client' ? 'client_signed_at' : 'expert_signed_at';
+    const text = `
+        UPDATE contracts
+        SET ${signatureColumn} = $1,
+            ${signedAtColumn} = CURRENT_TIMESTAMP,
+            status = CASE
+                WHEN ${party === 'client' ? 'expert_signed_at' : 'client_signed_at'} IS NOT NULL THEN 'signed'
+                ELSE 'pending'
+            END,
+            signed_at = CASE
+                WHEN ${party === 'client' ? 'expert_signed_at' : 'client_signed_at'} IS NOT NULL THEN CURRENT_TIMESTAMP
+                ELSE signed_at
+            END,
+            locked_at = CASE
+                WHEN ${party === 'client' ? 'expert_signed_at' : 'client_signed_at'} IS NOT NULL THEN CURRENT_TIMESTAMP
+                ELSE locked_at
+            END,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2 AND locked_at IS NULL AND ${signatureColumn} IS NULL
+        RETURNING *
+    `;
+    const result = await query(text, [metadata || {}, id]);
+    return result.rows[0];
+};
 
-    if (status === 'signed') {
-        signedAtClause = ", signed_at = CURRENT_TIMESTAMP";
-    }
-
-    if (metadata) {
-        text = `
-            UPDATE contracts 
-            SET status = $1${signedAtClause},
-                signature_metadata = $2,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $3
-            RETURNING *
-        `;
-        values = [status, metadata, id];
-    } else {
-        text = `
-            UPDATE contracts 
-            SET status = $1${signedAtClause},
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $2
-            RETURNING *
-        `;
-        values = [status, id];
-    }
-
-    const result = await query(text, values);
+const updateContractStatus = async (id, status) => {
+    const result = await query(
+        'UPDATE contracts SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND locked_at IS NULL RETURNING *',
+        [status, id]
+    );
     return result.rows[0];
 };
 
@@ -134,6 +135,9 @@ const updateContract = async (id, contractData) => {
             amount = COALESCE($2, amount),
             status = COALESCE($3, status)
         WHERE id = $4
+          AND locked_at IS NULL
+          AND client_signed_at IS NULL
+          AND expert_signed_at IS NULL
         RETURNING *
     `;
     const values = [terms, amount, status, id];
@@ -177,6 +181,7 @@ module.exports = {
     getContractsByExpert,
     getContractsByClient,
     updateContractStatus,
+    signContractParty,
     updateContract,
     deleteContract,
     getContractCountByStatus

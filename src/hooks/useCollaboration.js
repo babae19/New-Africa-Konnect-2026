@@ -81,11 +81,14 @@ export const useCollaboration = (projectId, user) => {
                     console.error("Failed to fetch tasks", tasksRes.reason);
                 }
 
+                const failed = [msgsRes, filesRes, tasksRes, contractsRes, interviewsRes].find(result => result.status === 'rejected');
+                setError(failed ? (failed.reason?.message || 'Some collaboration data could not be loaded.') : null);
+
             } catch (err) {
                 console.error("Failed to fetch collaboration data", err);
                 setError("Failed to load some project data");
             } finally {
-                setLoading({ messages: false, files: false, tasks: false, activity: false });
+                setLoading({ messages: false, files: false, tasks: false, activity: false, contracts: false });
             }
         };
 
@@ -97,13 +100,13 @@ export const useCollaboration = (projectId, user) => {
         if (!socket || !projectId) return;
 
         // Join project room
-        if (socket.connected) {
-            socket.emit('join_project', projectId);
-        } else {
-            socket.on('connect', () => {
-                socket.emit('join_project', projectId);
-            });
-        }
+        const joinProject = () => socket.emit('join_project', projectId, acknowledgement => {
+            if (acknowledgement && acknowledgement.ok === false) {
+                setError(acknowledgement.error || 'Unable to join the live collaboration room.');
+            }
+        });
+        if (socket.connected) joinProject();
+        socket.on('connect', joinProject);
 
         const handleNewMessage = (msg) => {
             const msgProjectId = msg.project_id || msg.projectId;
@@ -208,9 +211,10 @@ export const useCollaboration = (projectId, user) => {
             socket.off('contract_updated', handleContractUpdated);
             socket.off('interview_scheduled', handleInterviewScheduled);
             socket.off('user_typing', handleUserTyping);
+            socket.off('connect', joinProject);
             socket.emit('leave_project', projectId);
         };
-    }, [socket, projectId]);
+    }, [socket, projectId, user?.id]);
 
     // Actions
     const sendMessage = useCallback(async (content) => {
@@ -236,7 +240,7 @@ export const useCollaboration = (projectId, user) => {
             setMessages(prev => [...prev, optimisticMsg]);
 
             const res = await api.messages.send(projectId, content);
-            setMessages(prev => prev.map(m => m.id === tempId ? res : m));
+            setMessages(prev => prev.map(m => m.id === tempId ? { ...res, sender: optimisticMsg.sender } : m));
             return res;
         } catch (err) {
             console.error("Failed to send message", err);
@@ -250,7 +254,7 @@ export const useCollaboration = (projectId, user) => {
             const formData = new FormData();
             formData.append('file', fileData);
             const res = await api.files.upload(formData, projectId);
-            setFiles(prev => [...prev, res]);
+            setFiles(prev => prev.some(file => file.id === res.id) ? prev : [...prev, res]);
             return res;
         } catch (err) {
             console.error("Upload failed", err);
@@ -261,7 +265,7 @@ export const useCollaboration = (projectId, user) => {
     const createTask = useCallback(async (taskData) => {
         try {
             const res = await api.tasks.create(projectId, taskData);
-            setTasks(prev => [...prev, res]);
+            setTasks(prev => prev.some(task => task.id === res.id) ? prev : [...prev, res]);
             return res;
         } catch (err) {
             console.error("Task creation failed", err);

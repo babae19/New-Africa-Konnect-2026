@@ -593,23 +593,11 @@ export const api = {
                     data.append('projectId', projectId);
                 }
 
-                const userInfo = localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')) : null;
-                const token = userInfo?.token;
-
-                const response = await fetch(`${API_URL}/files`, {
+                return apiRequest('/files', {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                        // Browser sets Content-Type automatically for FormData
-                    },
+                    headers: getHeaders(null),
                     body: data,
                 });
-
-                if (!response.ok) {
-                    const errData = await handleResponse(response).catch(() => ({}));
-                    throw new Error(errData.message || 'File upload failed');
-                }
-                return response.json();
             }
 
             // JSON upload (metadata only or base64)

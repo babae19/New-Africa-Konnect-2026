@@ -6,7 +6,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCollaboration } from '../hooks/useCollaboration';
 import { api } from '../lib/api';
 import { Step4Contract } from '../features/project-hub/Step4Contract';
-import AIDraftModal from '../components/AIDraftModal';
 import DirectMessagesPanel from '../components/collaboration/DirectMessagesPanel';
 import MeetingRoom from '../components/common/MeetingRoom';
 import { Avatar } from '../components/ui/Avatar';
@@ -201,7 +200,7 @@ const OverviewTab = ({ project, tasks, contracts = [], onInvite }) => {
 };
 
 // ─── MESSAGES TAB ─────────────────────────────────────────────────────────────
-const MessagesTab = ({ messages, onSend, user, typingUsers = [], onTyping = () => {} }) => {
+const MessagesTab = ({ messages, onSend, user, projectId, typingUsers = [], onTyping = () => {} }) => {
     const [message, setMessage] = useState('');
     const [uploading, setUploading]   = useState(false);
     const scrollRef  = useRef(null);
@@ -211,11 +210,17 @@ const MessagesTab = ({ messages, onSend, user, typingUsers = [], onTyping = () =
         if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }, [messages]);
 
-    const handleSend = (e) => {
+    const handleSend = async (e) => {
         e?.preventDefault();
         if (!message.trim()) return;
-        onSend(message);
+        const content = message;
         setMessage('');
+        try {
+            await onSend(content);
+        } catch (err) {
+            setMessage(content);
+            toast.error(err.message || 'Message could not be sent.');
+        }
     };
 
     const handleFileSend = async (e) => {
@@ -226,7 +231,7 @@ const MessagesTab = ({ messages, onSend, user, typingUsers = [], onTyping = () =
         try {
             const formData = new FormData();
             formData.append('file', file);
-            const res = await api.files.uploadImage({ data: await fileToBase64(file), name: file.name });
+            const res = await api.files.upload(formData, projectId);
             await onSend(`📎 [${file.name}](${res.url})`);
             toast.success('File shared in chat!', { id: toastId });
         } catch (err) {
@@ -236,13 +241,6 @@ const MessagesTab = ({ messages, onSend, user, typingUsers = [], onTyping = () =
             e.target.value = '';
         }
     };
-
-    const fileToBase64 = (file) => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = e => resolve(e.target.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
 
     const renderContent = (content) => {
         // Render file links as clickable
@@ -288,11 +286,11 @@ const MessagesTab = ({ messages, onSend, user, typingUsers = [], onTyping = () =
                 {messages.map((msg) => (
                     <div key={msg.id} className={`flex ${isMe(msg) ? 'justify-end' : 'justify-start'}`}>
                         {!isMe(msg) && (
-                            <Avatar name={msg.sender?.name || 'User'} className="h-7 w-7 bg-gray-200 text-gray-600 text-xs mr-2 flex-shrink-0 mt-1" />
+                            <Avatar name={msg.sender?.name || msg.sender_name || 'User'} className="h-7 w-7 bg-gray-200 text-gray-600 text-xs mr-2 flex-shrink-0 mt-1" />
                         )}
                         <div className={`flex flex-col ${isMe(msg) ? 'items-end' : 'items-start'} max-w-[75%]`}>
                             {!isMe(msg) && (
-                                <span className="text-[10px] font-bold text-gray-400 mb-0.5 px-1">{msg.sender?.name || 'Team Member'}</span>
+                                <span className="text-[10px] font-bold text-gray-400 mb-0.5 px-1">{msg.sender?.name || msg.sender_name || 'Team Member'}</span>
                             )}
                             <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
                                 isMe(msg)
@@ -662,76 +660,19 @@ const VideoConferenceTab = ({ project, user, onNotify }) => {
 };
 
 // ─── CONTRACT TAB ─────────────────────────────────────────────────────────────
-const ContractTab = ({ project, user, onMessage }) => {
-    const [showAIDraft, setShowAIDraft] = useState(false);
-    const [savedContract, setSavedContract] = useState(null);
-
-    const handleSaveContract = (text) => {
-        setSavedContract(text);
-        // Also notify team in chat
-        onMessage?.(`📄 A new AI-generated contract draft has been saved for review.`);
-    };
-
+const ContractTab = ({ project, liveContract }) => {
     return (
         <div className="space-y-5">
-            {/* AI Draft Banner */}
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-white border border-violet-100 rounded-2xl">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
-                        <Sparkles size={18} className="text-violet-600" />
-                    </div>
-                    <div>
-                        <p className="font-bold text-gray-900 text-sm">AI Contract Drafting</p>
-                        <p className="text-xs text-gray-400">Describe your contract — AI generates it in real-time</p>
-                    </div>
-                </div>
-                <button
-                    onClick={() => setShowAIDraft(true)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-violet-700 bg-violet-100 hover:bg-violet-200 rounded-xl transition-colors"
-                >
-                    <Sparkles size={14} /> Draft with AI
-                </button>
-            </div>
-
-            {/* Saved AI Draft preview */}
-            {savedContract && (
-                <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                            <FileText size={14} className="text-primary" /> AI Generated Draft
-                        </h3>
-                        <button
-                            onClick={() => navigator.clipboard.writeText(savedContract).then(() => toast.success('Copied!'))}
-                            className="text-xs font-semibold text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                        >
-                            <Copy size={11} /> Copy
-                        </button>
-                    </div>
-                    <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono bg-gray-50 p-4 rounded-xl max-h-56 overflow-y-auto leading-relaxed">
-                        {savedContract}
-                    </pre>
-                </div>
-            )}
-
-            {/* Existing contracts from Step4Contract */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-50 flex items-center gap-2">
                     <FileSignature size={16} className="text-primary" />
                     <h3 className="font-bold text-gray-900 text-sm">Smart Contracts</h3>
                 </div>
                 <div className="p-4">
-                    <Step4Contract project={project} hideProceed={true} onNext={() => {}} />
+                    <Step4Contract project={project} liveContract={liveContract} hideProceed={true} onNext={() => {}} />
                 </div>
             </div>
 
-            <AIDraftModal
-                isOpen={showAIDraft}
-                onClose={() => setShowAIDraft(false)}
-                onSave={handleSaveContract}
-                project={project}
-                clientName={project?.client_name}
-                expertName={project?.expert_name}
-            />
         </div>
     );
 };
@@ -741,11 +682,11 @@ export default function Collaboration() {
     const { user }      = useAuth();
     const location      = useLocation();
     const navigate      = useNavigate();
-    const projectId     = location.state?.projectId;
+    const [searchParams] = useSearchParams();
+    const projectId     = location.state?.projectId || searchParams.get('projectId');
     const [project, setProject]         = useState(null);
     const [initLoading, setInitLoading] = useState(true);
 
-    const [searchParams] = useSearchParams();
     const tabParam     = searchParams.get('tab');
 
     const { activeTab, setActiveTab, data, loading, actions } = useCollaboration(project?.id || projectId, user);
@@ -894,10 +835,10 @@ export default function Collaboration() {
                         className="h-full"
                     >
                         {activeTab === 'overview'  && <OverviewTab project={project} tasks={data.tasks} contracts={data.contracts} onInvite={actions.inviteUser} />}
-                        {activeTab === 'messages'  && <MessagesTab messages={data.messages} onSend={actions.sendMessage} onTyping={actions.sendTyping} typingUsers={data.typingUsers} user={user} />}
+                        {activeTab === 'messages'  && <MessagesTab messages={data.messages} projectId={project.id} onSend={actions.sendMessage} onTyping={actions.sendTyping} typingUsers={data.typingUsers} user={user} />}
                         {activeTab === 'tasks'     && <TasksTab tasks={data.tasks} onCreate={actions.createTask} onUpdateStatus={actions.updateTaskStatus} project={project} />}
                         {activeTab === 'files'     && <FilesTab files={data.files} onUpload={actions.uploadFile} />}
-                        {activeTab === 'contracts' && <ContractTab project={project} user={user} onMessage={actions.sendMessage} />}
+                        {activeTab === 'contracts' && <ContractTab project={project} liveContract={data.contracts?.[0]} />}
                         {activeTab === 'video'     && <VideoConferenceTab project={project} user={user} onNotify={actions.sendMessage} />}
                         {activeTab === 'dm'        && <DirectMessagesPanel project={project} />}
                     </motion.div>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Check, ChevronRight, User, Briefcase, Award, Loader2, Upload } from 'lucide-react';
@@ -17,7 +17,7 @@ const steps = [
 
 const Onboarding = () => {
     const navigate = useNavigate();
-    const { user, updateProfile, uploadProfileImage } = useAuth();
+    const { user, profile, updateProfile, uploadProfileImage, isExpert } = useAuth();
     const { uploadFile, uploading } = useFileUpload();
     const [currentStep, setCurrentStep] = useState(1);
     const [saving, setSaving] = useState(false);
@@ -32,6 +32,22 @@ const Onboarding = () => {
     });
     const [imagePreview, setImagePreview] = useState(user?.profile_image_url || null);
     const [newSkill, setNewSkill] = useState('');
+
+    useEffect(() => {
+        if (user?.onboarding_completed || profile?.onboarding_completed) {
+            navigate(isExpert ? '/expert-dashboard' : '/project-hub', { replace: true });
+            return;
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            title: profile?.title || user?.title || prev.title,
+            bio: profile?.bio || user?.bio || prev.bio,
+            skills: profile?.skills || prev.skills,
+            location: profile?.location || user?.location || prev.location
+        }));
+        setImagePreview(profile?.profile_image_url || user?.profile_image_url || null);
+    }, [user, profile, isExpert, navigate]);
 
     const handleImageUpload = async (e) => {
         const file = e.target.files[0];
@@ -61,12 +77,13 @@ const Onboarding = () => {
     const finishOnboarding = async () => {
         setSaving(true);
         try {
-            await updateProfile({
+            const result = await updateProfile({
                 ...formData,
                 onboarding_completed: true
             });
+            if (result.error) throw result.error;
             toast.success("Welcome aboard! Your profile is ready.");
-            navigate('/dashboard'); // or expert-dashboard based on role
+            navigate(isExpert ? '/expert-dashboard' : '/project-hub', { replace: true });
         } catch (error) {
             toast.error("Failed to save profile. Please try again.");
         } finally {

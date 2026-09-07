@@ -44,9 +44,16 @@ const setupSocket = (server) => {
         socket.on('join_project', async (projectId, acknowledge) => {
             try {
                 const result = await query(
-                    `SELECT 1 FROM projects
-                     WHERE id = $1
-                       AND (client_id = $2 OR (selected_expert_id = $2 AND expert_status = 'accepted'))`,
+                    `SELECT 1 FROM projects p
+                     WHERE p.id = $1
+                       AND (
+                           p.client_id = $2
+                           OR (p.selected_expert_id = $2 AND p.expert_status = 'accepted')
+                           OR EXISTS (
+                               SELECT 1 FROM project_members pm
+                               WHERE pm.project_id = p.id AND pm.user_id = $2
+                           )
+                       )`,
                     [projectId, socket.user.id]
                 );
                 const allowed = socket.user.role === 'admin' || result.rows.length > 0;

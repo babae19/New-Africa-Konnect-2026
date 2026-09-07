@@ -5,9 +5,10 @@ const {
     getContractsByExpert,
     getContractsByClient,
     updateContractStatus,
-    updateContract
+    updateContract,
+    signContractParty
 } = require('../models/contractModel');
-const { getProjectById } = require('../models/projectModel');
+const { getProjectById, updateProject, isMember } = require('../models/projectModel');
 
 // Create new contract
 exports.createContract = async (req, res) => {
@@ -38,7 +39,7 @@ exports.createContract = async (req, res) => {
             return res.status(404).json({ message: 'Expert profile not found' });
         }
 
-        if (expertProfile.vetting_status !== 'verified') {
+        if (!['verified', 'approved'].includes(expertProfile.vetting_status)) {
             return res.status(403).json({
                 message: 'Cannot hire an expert who is not verified.',
                 code: 'EXPERT_NOT_VERIFIED'
@@ -97,6 +98,13 @@ exports.getProjectContracts = async (req, res) => {
             return res.status(404).json({ message: 'Project not found' });
         }
 
+        const isParticipant = project.client_id === req.user.id ||
+            (project.selected_expert_id === req.user.id && project.expert_status === 'accepted') ||
+            await isMember(projectId, req.user.id);
+        if (!isParticipant && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized to view contracts for this project' });
+        }
+
         const contracts = await getContractsByProject(projectId);
 
         res.json({
@@ -152,21 +160,43 @@ exports.signContract = async (req, res) => {
 
         // Update status to signed AND capture metadata
         // Request body should contain metadata like IP, user agent, consent timestamp
-        const { signatureMetadata } = req.body;
+        if (contract.locked_at) {
+            return res.status(409).json({ message: 'This contract is fully signed and cannot be changed' });
+        }
 
-        const updatedContract = await updateContractStatus(id, 'signed', signatureMetadata);
+        const party = contract.client_id === req.user.id ? 'client' : 'expert';
+        const signatureMetadata = {
+            ...(req.body.signatureMetadata || req.body || {}),
+            signerId: req.user.id,
+            signerName: req.user.name,
+            party,
+            signedAt: new Date().toISOString(),
+            userAgent: req.headers['user-agent'],
+            ip: req.ip
+        };
+
+        const updatedContract = await signContractParty(id, party, signatureMetadata);
+        if (!updatedContract) {
+            return res.status(409).json({ message: 'You have already signed this contract or it is locked' });
+        }
+
+        if (updatedContract.status === 'signed') {
+            await updateProject(contract.project_id, { status: 'active' });
+        }
 
         // Emit socket event for real-time updates
         const io = req.app.get('io');
         if (io) {
             io.to(`project_${contract.project_id}`).emit('contract_updated', updatedContract);
 
-            io.to(`project_${contract.project_id}`).emit('project_update', {
-                id: contract.project_id,
-                status: 'active', // Assuming signing makes it active
-                contract_status: 'signed',
-                updatedAt: new Date()
-            });
+            if (updatedContract.status === 'signed') {
+                io.to(`project_${contract.project_id}`).emit('project_update', {
+                    id: contract.project_id,
+                    status: 'active',
+                    contract_status: updatedContract.status,
+                    updatedAt: new Date()
+                });
+            }
 
             // Also notify via activity/message if needed
             io.to(`project_${contract.project_id}`).emit('activity_logged', {
@@ -222,15 +252,26 @@ exports.updateContract = async (req, res) => {
         const { id } = req.params;
         const { terms, amount, status } = req.body;
 
+        if (terms !== undefined && (typeof terms !== 'string' || terms.length > 10000)) {
+            return res.status(400).json({ message: 'Terms must be text no longer than 10000 characters' });
+        }
+        if (amount !== undefined && (!Number.isFinite(Number(amount)) || Number(amount) < 0)) {
+            return res.status(400).json({ message: 'Amount must be a positive number' });
+        }
+
         const contract = await getContractById(id);
 
         if (!contract) {
             return res.status(404).json({ message: 'Contract not found' });
         }
 
-        // Only client can update contract details
-        if (contract.client_id !== req.user.id && req.user.role !== 'admin') {
+        // Both named parties may collaborate on a draft until both have signed.
+        if (contract.client_id !== req.user.id && contract.expert_id !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Not authorized to update this contract' });
+        }
+
+        if (contract.locked_at || contract.status === 'signed' || contract.client_signed_at || contract.expert_signed_at) {
+            return res.status(409).json({ message: 'A signed contract cannot be edited' });
         }
 
         const updatedContract = await updateContract(id, {
@@ -238,6 +279,11 @@ exports.updateContract = async (req, res) => {
             amount,
             status
         });
+
+        if (!updatedContract) return res.status(409).json({ message: 'Contract is locked' });
+
+        const io = req.app.get('io');
+        if (io) io.to(`project_${contract.project_id}`).emit('contract_updated', updatedContract);
 
         res.json(updatedContract);
     } catch (error) {

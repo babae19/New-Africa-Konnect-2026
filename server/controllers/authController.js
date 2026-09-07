@@ -116,6 +116,7 @@ exports.registerUser = async (req, res) => {
                 role: user.role,
                 profile_image_url: user.profile_image_url,
                 bio: user.bio,
+                onboarding_completed: false,
                 emailVerified: false,
                 token,
                 refreshToken,
@@ -208,6 +209,7 @@ exports.loginUser = async (req, res) => {
                 role: user.role,
                 profile_image_url: user.profile_image_url,
                 bio: user.bio,
+                onboarding_completed: user.onboarding_completed,
                 emailVerified: user.email_verified,
                 lastLogin: user.last_login,
                 token,
@@ -570,7 +572,7 @@ exports.resetPassword = async (req, res) => {
 exports.updateUserProfile = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { name, email, profileImageUrl, profile_image_url, bio, phone, country, city, location, company, website, title } = req.body;
+        const { name, email, profileImageUrl, profile_image_url, bio, phone, country, city, location, company, website, title, onboarding_completed } = req.body;
 
         // Prevent users from changing their role via this endpoint
         if (req.body.role) {
@@ -581,7 +583,7 @@ exports.updateUserProfile = async (req, res) => {
             name,
             email,
             profile_image_url: profile_image_url || profileImageUrl, // Support both
-            bio, phone, country, city, location, company, website, title
+            bio, phone, country, city, location, company, website, title, onboarding_completed
         });
 
         res.json({

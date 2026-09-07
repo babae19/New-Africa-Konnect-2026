@@ -181,6 +181,8 @@ export const AuthProvider = ({ children }) => {
                     company: updates.company,
                     website: updates.website,
                     bio: updates.bio,
+                    title: updates.title,
+                    onboarding_completed: updates.onboarding_completed,
                     profile_image_url: updates.profile_image_url || updates.profileImageUrl
                 });
                 await api.experts.updateProfile(user.id, expertUpdates);
@@ -198,7 +200,8 @@ export const AuthProvider = ({ children }) => {
                     location: updates.location ?? user.location,
                     company: updates.company ?? user.company,
                     website: updates.website ?? user.website,
-                    title: updates.title ?? user.title
+                    title: updates.title ?? user.title,
+                    onboarding_completed: updates.onboarding_completed ?? user.onboarding_completed
                 });
             }
 

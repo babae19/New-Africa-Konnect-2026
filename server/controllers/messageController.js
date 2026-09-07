@@ -10,8 +10,14 @@ const {
     getDirectChatUsers,
     deleteMessage
 } = require('../models/messageModel');
-const { getProjectById } = require('../models/projectModel');
-const { getContractsByProject } = require('../models/contractModel');
+const { getProjectById, isMember } = require('../models/projectModel');
+
+const canAccessProject = async (project, user) => {
+    if (!project) return false;
+    if (user.role === 'admin' || project.client_id === user.id) return true;
+    if (project.selected_expert_id === user.id && project.expert_status === 'accepted') return true;
+    return isMember(project.id, user.id);
+};
 
 // Send message
 exports.sendMessage = async (req, res) => {
@@ -31,11 +37,7 @@ exports.sendMessage = async (req, res) => {
             }
 
             // Check if user is client or expert on this project
-            const isClient = project.client_id === senderId;
-            const contracts = await getContractsByProject(projectId);
-            const isExpert = contracts.some(c => c.expert_id === senderId);
-
-            if (!isClient && !isExpert && req.user.role !== 'admin') {
+            if (!(await canAccessProject(project, req.user))) {
                 return res.status(403).json({ message: 'Not authorized to send messages in this project' });
             }
         } else if (!receiverId) {
@@ -94,11 +96,7 @@ exports.getMessages = async (req, res) => {
         }
 
         // Check if user is client or expert on this project
-        const isClient = project.client_id === req.user.id;
-        const contracts = await getContractsByProject(projectId);
-        const isExpert = contracts.some(c => c.expert_id === req.user.id);
-
-        if (!isClient && !isExpert && req.user.role !== 'admin') {
+        if (!(await canAccessProject(project, req.user))) {
             return res.status(403).json({ message: 'Not authorized to view messages in this project' });
         }
 
@@ -135,9 +133,7 @@ exports.getMessageById = async (req, res) => {
         // Access check
         if (message.project_id) {
             const project = await getProjectById(message.project_id);
-            const contracts = await getContractsByProject(message.project_id);
-            const isExpert = contracts.some(c => c.expert_id === req.user.id);
-            if (project.client_id !== req.user.id && !isExpert && req.user.role !== 'admin') {
+            if (!(await canAccessProject(project, req.user))) {
                 return res.status(403).json({ message: 'Not authorized' });
             }
         } else if (message.sender_id !== req.user.id && message.receiver_id !== req.user.id && req.user.role !== 'admin') {
@@ -181,6 +177,15 @@ exports.markAsRead = async (req, res) => {
     try {
         const { id } = req.params;
 
+        const existingMessage = await getMessageById(id);
+        if (!existingMessage) return res.status(404).json({ message: 'Message not found' });
+        if (existingMessage.project_id) {
+            const project = await getProjectById(existingMessage.project_id);
+            if (!(await canAccessProject(project, req.user))) return res.status(403).json({ message: 'Not authorized' });
+        } else if (existingMessage.sender_id !== req.user.id && existingMessage.receiver_id !== req.user.id) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
         const message = await markAsRead(id);
 
         if (!message) {
@@ -212,6 +217,9 @@ exports.markProjectMessagesAsRead = async (req, res) => {
         const project = await getProjectById(projectId);
         if (!project) {
             return res.status(404).json({ message: 'Project not found' });
+        }
+        if (!(await canAccessProject(project, req.user))) {
+            return res.status(403).json({ message: 'Not authorized to update messages in this project' });
         }
 
         const messages = await markProjectMessagesAsRead(projectId, userId);

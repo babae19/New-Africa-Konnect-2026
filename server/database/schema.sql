@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS users (
     company VARCHAR(255),
     website TEXT,
     title VARCHAR(255),
+    onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE,
     -- Verification & Security
     email_verified BOOLEAN DEFAULT FALSE,
     verification_token TEXT,
@@ -274,6 +275,11 @@ CREATE TABLE IF NOT EXISTS contracts (
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'signed', 'active', 'completed', 'cancelled', 'disputed')),
     signature_metadata JSONB DEFAULT '{}'::jsonb,
     signed_at TIMESTAMP WITH TIME ZONE,
+    client_signature JSONB,
+    expert_signature JSONB,
+    client_signed_at TIMESTAMP WITH TIME ZONE,
+    expert_signed_at TIMESTAMP WITH TIME ZONE,
+    locked_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

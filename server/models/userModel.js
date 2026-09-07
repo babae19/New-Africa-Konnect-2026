@@ -30,21 +30,21 @@ const createUser = async (userData) => {
 
 // Find user by email
 const findUserByEmail = async (email) => {
-    const text = 'SELECT id, name, email, password_hash, role, profile_image_url, bio, phone, country, city, location, company, website, title, email_verified, last_login, created_at, updated_at FROM users WHERE email = $1';
+    const text = 'SELECT id, name, email, password_hash, role, profile_image_url, bio, phone, country, city, location, company, website, title, onboarding_completed, email_verified, last_login, created_at, updated_at FROM users WHERE email = $1';
     const result = await query(text, [email]);
     return result.rows[0];
 };
 
 // Find user by ID
 const findUserById = async (id) => {
-    const text = 'SELECT id, email, password_hash, name, role, profile_image_url, bio, phone, country, city, location, company, website, title, email_verified, created_at, updated_at FROM users WHERE id = $1';
+    const text = 'SELECT id, email, password_hash, name, role, profile_image_url, bio, phone, country, city, location, company, website, title, onboarding_completed, email_verified, created_at, updated_at FROM users WHERE id = $1';
     const result = await query(text, [id]);
     return result.rows[0];
 };
 
 // Update user
 const updateUser = async (id, userData) => {
-    const { name, email, role, profileImageUrl, profile_image_url, bio, phone, country, city, location, company, website, title } = userData;
+    const { name, email, role, profileImageUrl, profile_image_url, bio, phone, country, city, location, company, website, title, onboarding_completed } = userData;
     // Map both camelCase and snake_case for profileImageUrl
     const finalImageUrl = profile_image_url || profileImageUrl;
 
@@ -63,11 +63,12 @@ const updateUser = async (id, userData) => {
             company = COALESCE($10, company),
             website = COALESCE($11, website),
             title = COALESCE($12, title),
+            onboarding_completed = COALESCE($13, onboarding_completed),
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $13
-        RETURNING id, name, email, role, profile_image_url, bio, phone, country, city, location, company, website, title
+        WHERE id = $14
+        RETURNING id, name, email, role, profile_image_url, bio, phone, country, city, location, company, website, title, onboarding_completed
     `;
-    const values = [name, email, role, finalImageUrl, bio, phone, country, city, location, company, website, title, id];
+    const values = [name, email, role, finalImageUrl, bio, phone, country, city, location, company, website, title, onboarding_completed, id];
     const result = await query(text, values);
     return result.rows[0];
 };

@@ -34,6 +34,6 @@ router.put('/:id/sign', validateId, signContract);
 router.put('/:id/status', validateId, updateStatus);
 
 // Update contract
-router.put('/:id', validateId, validateContract, updateContract);
+router.put('/:id', validateId, updateContract);
 
 module.exports = router;

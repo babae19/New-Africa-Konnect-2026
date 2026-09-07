@@ -40,7 +40,9 @@ async function setupDatabase() {
             '004_realtime_features.sql',
             '005_audit_fixes.sql',
             '007_profile_enhancements.sql',
-            '012_profile_and_file_persistence.sql'
+            '012_profile_and_file_persistence.sql',
+            '013_persist_onboarding_completion.sql',
+            '014_collaboration_contract_lifecycle.sql'
         ];
 
         for (const migration of migrations) {

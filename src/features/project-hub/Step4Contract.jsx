@@ -7,10 +7,10 @@ import { Button } from '../../components/ui/Button';
 import { useProject } from '../../contexts/ProjectContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../lib/api';
-import socketService from '../../lib/socket';
 import { useNavigate } from 'react-router-dom';
+import { jsPDF } from 'jspdf';
 
-const Step4Contract = ({ onNext, project, hideProceed }) => {
+const Step4Contract = ({ onNext, project, hideProceed, liveContract }) => {
     const navigate = useNavigate();
     const { currentProject: contextProject } = useProject();
     // Use passed project or fallback to context
@@ -36,6 +36,19 @@ const Step4Contract = ({ onNext, project, hideProceed }) => {
     const isExpertAccepted = currentProject?.expert_status === 'accepted';
     const isExpertPending = currentProject?.expert_status === 'pending';
     const expertStatus = currentProject?.expert_status;
+    const isClientParty = contract?.client_id === user?.id;
+    const hasSigned = Boolean(isClientParty ? contract?.client_signed_at : contract?.expert_signed_at);
+    const hasAnySignature = Boolean(contract?.client_signed_at || contract?.expert_signed_at);
+    const isLocked = Boolean(contract?.locked_at || contract?.status === 'signed');
+
+    useEffect(() => {
+        if (!liveContract) return;
+        setContract(liveContract);
+        setTerms(liveContract.terms || '');
+        setAmount(liveContract.amount || '');
+        setIsSigned(Boolean(liveContract.client_id === user?.id ? liveContract.client_signed_at : liveContract.expert_signed_at));
+        if (liveContract.client_signed_at || liveContract.expert_signed_at) setIsEditing(false);
+    }, [liveContract, user?.id]);
 
     useEffect(() => {
         const fetchContract = async () => {
@@ -51,9 +64,7 @@ const Step4Contract = ({ onNext, project, hideProceed }) => {
                     setTerms(activeContract.terms || '');
                     setAmount(activeContract.amount || '');
                     // Check if *current user* has signed?
-                    if (activeContract.status === 'signed' || activeContract.status === 'active') {
-                        setIsSigned(true);
-                    }
+                    setIsSigned(Boolean(activeContract.client_id === user?.id ? activeContract.client_signed_at : activeContract.expert_signed_at));
                 }
             } catch (error) {
                 console.error("Failed to fetch contract", error);
@@ -63,7 +74,7 @@ const Step4Contract = ({ onNext, project, hideProceed }) => {
         if (currentProject && (isExpertAccepted || currentProject.status === 'active')) {
             fetchContract();
         }
-    }, [currentProject, isExpertAccepted]);
+    }, [currentProject, isExpertAccepted, user?.id]);
 
 
     const generateContract = async () => {
@@ -89,12 +100,14 @@ const Step4Contract = ({ onNext, project, hideProceed }) => {
             if (result.contract) {
                 setAmount(currentProject.budget || '');
 
-                const newContract = await api.contracts.create({
-                    projectId: currentProject.id,
-                    expertId: currentProject.selected_expert_id,
-                    terms: result.contract,
-                    amount: parseFloat(currentProject.budget || 0)
-                });
+                const newContract = contract
+                    ? await api.contracts.update(contract.id, { terms: result.contract, amount: parseFloat(currentProject.budget || 0) })
+                    : await api.contracts.create({
+                        projectId: currentProject.id,
+                        expertId: currentProject.selected_expert_id,
+                        terms: result.contract,
+                        amount: parseFloat(currentProject.budget || 0)
+                    });
                 setContract(newContract);
                 toast.success('Contract drafted in real-time!', { id: toastId });
             }
@@ -125,12 +138,14 @@ Contractor is an independent contractor and not an employee of Client.`;
 
             try {
                 // Create draft with fallback
-                const newContract = await api.contracts.create({
-                    projectId: currentProject.id,
-                    expertId: currentProject.selected_expert_id,
-                    terms: fallbackTerms,
-                    amount: parseFloat(currentProject.budget || 0)
-                });
+                const newContract = contract
+                    ? await api.contracts.update(contract.id, { terms: fallbackTerms, amount: parseFloat(currentProject.budget || 0) })
+                    : await api.contracts.create({
+                        projectId: currentProject.id,
+                        expertId: currentProject.selected_expert_id,
+                        terms: fallbackTerms,
+                        amount: parseFloat(currentProject.budget || 0)
+                    });
                 setContract(newContract);
             } catch (fallbackError) {
                 console.error("Fallback creation failed", fallbackError);
@@ -162,11 +177,10 @@ Contractor is an independent contractor and not an employee of Client.`;
         if (!contract) return;
         const toastId = toast.loading('Signing contract...');
         try {
-            await api.contracts.sign(contract.id, {
-                ip: '127.0.0.1', // Mock IP
-                userAgent: navigator.userAgent,
-                timestamp: new Date().toISOString()
+            const updated = await api.contracts.sign(contract.id, {
+                consent: true
             });
+            setContract(updated);
             setIsSigned(true);
             setShowConfetti(true);
             toast.success('Contract signed successfully!', { id: toastId });
@@ -202,7 +216,7 @@ Contractor is an independent contractor and not an employee of Client.`;
         onNext();
     };
 
-    if (isSigned && !escrowFunded) {
+    if (isLocked && !escrowFunded && !hideProceed && user?.role === 'client') {
         return (
             <div className="max-w-4xl mx-auto">
                 <div className="text-center mb-8">
@@ -272,16 +286,39 @@ Contractor is an independent contractor and not an employee of Client.`;
 
     const handleDownload = () => {
         if (!contract) return;
-        const element = document.createElement("a");
-        const file = new Blob([contract.terms], { type: 'text/plain' });
-        element.href = URL.createObjectURL(file);
-        element.download = `Contract_${currentProject.id}.txt`;
-        document.body.appendChild(element);
-        element.click();
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        let y = 22;
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(16);
+        pdf.text('INDEPENDENT CONTRACTOR AGREEMENT', pageWidth / 2, y, { align: 'center' });
+        y += 12;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        const lines = pdf.splitTextToSize(contract.terms || terms || '', pageWidth - 30);
+        lines.forEach(line => {
+            if (y > pageHeight - 25) { pdf.addPage(); y = 20; }
+            pdf.text(line, 15, y);
+            y += 5;
+        });
+        if (y > pageHeight - 45) { pdf.addPage(); y = 20; }
+        y += 7;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`Contract value: $${contract.amount || amount || 0}`, 15, y);
+        y += 9;
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Client: ${contract.client_name || 'Client'} — ${contract.client_signed_at ? `signed ${new Date(contract.client_signed_at).toLocaleString()}` : 'not signed'}`, 15, y);
+        y += 6;
+        pdf.text(`Expert: ${contract.expert_name || 'Expert'} — ${contract.expert_signed_at ? `signed ${new Date(contract.expert_signed_at).toLocaleString()}` : 'not signed'}`, 15, y);
+        y += 8;
+        pdf.setFontSize(8);
+        pdf.text(isLocked ? 'Final locked copy. Both parties have electronically signed.' : 'Draft copy — signatures are not yet complete.', 15, y);
+        pdf.save(`Contract_${currentProject.id}${isLocked ? '_SIGNED' : '_DRAFT'}.pdf`);
     };
 
-    // Role check: Only client can edit, and only if pending
-    const canEdit = user?.role === 'client' && contract?.status === 'pending';
+    // Either named party can develop the draft. The first signature freezes its contents.
+    const canEdit = Boolean(contract) && !hasAnySignature && !isLocked;
 
     return (
         <div className="max-w-4xl mx-auto relative">
@@ -290,20 +327,20 @@ Contractor is an independent contractor and not an employee of Client.`;
                 <p className="text-gray-600">Review and sign the engagement contract.</p>
             </div>
 
-            <Card className={`p-0 overflow-hidden border-2 ${isSigned ? 'border-success/50' : 'border-gray-100'}`}>
+            <Card className={`p-0 overflow-hidden border-2 ${isLocked ? 'border-success/50' : 'border-gray-100'}`}>
                 <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-gray-700">
                         <FileSignature size={20} />
                         <span className="font-semibold">Engagement_Contract_v1.0.pdf</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        {canEdit && !isEditing && !isSigned && (
+                        {((canEdit || (!contract && user?.role === 'client')) && !isEditing) && (
                             <>
                                 <Button variant="ghost" size="sm" onClick={generateContract} disabled={generating} className="text-purple-600 hover:text-purple-700 hover:bg-purple-50">
                                     <Bot size={16} className="mr-2" />
                                     {generating ? 'Drafting...' : 'Generate with AI'}
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
+                                <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} disabled={!contract}>
                                     <Edit2 size={16} className="mr-2" />
                                     Edit Terms
                                 </Button>
@@ -317,7 +354,7 @@ Contractor is an independent contractor and not an employee of Client.`;
                         )}
                         <Button variant="ghost" size="sm" className="text-gray-500" onClick={handleDownload} disabled={!contract}>
                             <Download size={16} className="mr-2" />
-                            Download
+                            Download PDF
                         </Button>
                     </div>
                 </div>
@@ -371,17 +408,18 @@ Contractor is an independent contractor and not an employee of Client.`;
 
                 <div className="bg-gray-50 p-6 border-t border-gray-100">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                             <div className={`w-12 h-12 border-2 border-dashed rounded-lg flex items-center justify-center ${isSigned ? 'bg-success/10 border-success text-success' : 'bg-white border-gray-300 text-gray-400'}`}>
                                 {isSigned ? <Check size={24} /> : <span className="text-xs">Sign</span>}
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-gray-900">
-                                    {isSigned ? 'Contract Signed' : 'Digital Signature'}
+                                    {hasSigned ? 'You have signed' : isLocked ? 'Fully signed & locked' : 'Digital Signature'}
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                    {isSigned ? `Signed on ${new Date().toLocaleDateString()}` : 'Click sign to accept terms'}
+                                    {hasSigned ? 'Your electronic signature is recorded' : 'Click sign to accept the frozen terms'}
                                 </p>
+                                <p className="text-xs text-gray-500 mt-1">Client: {contract?.client_signed_at ? 'Signed' : 'Awaiting signature'} · Expert: {contract?.expert_signed_at ? 'Signed' : 'Awaiting signature'}</p>
                             </div>
                         </div>
 
@@ -389,8 +427,8 @@ Contractor is an independent contractor and not an employee of Client.`;
                             <Button
                                 size="lg"
                                 onClick={handleSign}
-                                disabled={isSigned || isEditing || !contract}
-                                className={isSigned ? "bg-success hover:bg-success cursor-default" : ""}
+                                disabled={hasSigned || isEditing || !contract || isLocked}
+                                className={hasSigned ? "bg-success hover:bg-success cursor-default" : ""}
                             >
                                 {isSigned ? (
                                     <>
@@ -402,7 +440,7 @@ Contractor is an independent contractor and not an employee of Client.`;
                                 )}
                             </Button>
 
-                            {isSigned && !hideProceed && (
+                            {isLocked && !hideProceed && (
                                 <motion.div
                                     initial={{ opacity: 0, x: 20 }}
                                     animate={{ opacity: 1, x: 0 }}

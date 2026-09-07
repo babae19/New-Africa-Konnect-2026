@@ -31,11 +31,15 @@ const requireProjectParticipant = async (req, res, next) => {
         }
 
         const text = `
-            SELECT client_id, selected_expert_id, expert_status
-            FROM projects 
-            WHERE id = $1
+            SELECT p.client_id, p.selected_expert_id, p.expert_status,
+                   EXISTS (
+                       SELECT 1 FROM project_members pm
+                       WHERE pm.project_id = p.id AND pm.user_id = $2
+                   ) AS is_member
+            FROM projects p
+            WHERE p.id = $1
         `;
-        const result = await query(text, [projectId]);
+        const result = await query(text, [projectId, req.user.id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Project not found' });
@@ -45,20 +49,24 @@ const requireProjectParticipant = async (req, res, next) => {
 
         const isClient = project.client_id === req.user.id;
         const isExpert = project.selected_expert_id === req.user.id && project.expert_status === 'accepted';
+        const isMember = project.is_member;
         const isAdmin = req.user.role === 'admin';
 
-        if (!isClient && !isExpert && !isAdmin) {
+        if (!isClient && !isExpert && !isMember && !isAdmin) {
             return res.status(403).json({
                 message: 'Access denied. You are not a participant in this project.'
             });
         }
 
-        req.projectParticipant = { isClient, isExpert };
+        req.projectParticipant = { isClient, isExpert, isMember };
         next();
     } catch (error) {
         console.error('Participant middleware error debug:', error);
         if (error.code === '22P02') {
             return res.status(400).json({ message: 'Invalid Project ID format' });
+        }
+        if (error.code === '42P01' || error.code === '42703') {
+            return res.status(503).json({ message: 'Collaboration is being prepared. Please try again shortly.' });
         }
         res.status(500).json({ message: 'Server error checking project participation' });
     }

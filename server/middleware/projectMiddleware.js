@@ -31,7 +31,7 @@ const requireProjectParticipant = async (req, res, next) => {
         }
 
         const text = `
-            SELECT client_id, selected_expert_id 
+            SELECT client_id, selected_expert_id, expert_status
             FROM projects 
             WHERE id = $1
         `;
@@ -44,7 +44,7 @@ const requireProjectParticipant = async (req, res, next) => {
         const project = result.rows[0];
 
         const isClient = project.client_id === req.user.id;
-        const isExpert = project.selected_expert_id === req.user.id;
+        const isExpert = project.selected_expert_id === req.user.id && project.expert_status === 'accepted';
         const isAdmin = req.user.role === 'admin';
 
         if (!isClient && !isExpert && !isAdmin) {

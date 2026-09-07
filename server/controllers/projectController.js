@@ -70,7 +70,7 @@ exports.getProject = async (req, res) => {
             const { getContractsByProject } = require('../models/contractModel');
             const contracts = await getContractsByProject(id);
             const isExpert = contracts.some(c => c.expert_id === req.user.id);
-            const isInvited = project.selected_expert_id === req.user.id;
+            const isInvited = project.selected_expert_id === req.user.id && project.expert_status === 'accepted';
 
             if (!isExpert && !isInvited) {
                 // Check if project member
@@ -277,8 +277,19 @@ exports.respondToInvite = async (req, res) => {
             return res.status(403).json({ message: 'You are not the invited expert for this project' });
         }
 
-        const { updateExpertStatus } = require('../models/projectModel');
+        if (project.expert_status !== 'pending') {
+            return res.status(409).json({ message: 'This project invitation has already been answered' });
+        }
+
+        const { updateExpertStatus, addMember } = require('../models/projectModel');
         const updatedProject = await updateExpertStatus(id, status);
+
+        // Acceptance is the point at which an invited expert becomes a
+        // collaboration participant. Pending/rejected invitations never grant
+        // workspace access.
+        if (status === 'accepted') {
+            await addMember(id, req.user.id, 'expert');
+        }
 
         // Create notification for Client
         const { sendNotification } = require('../services/notificationService');
@@ -309,7 +320,7 @@ exports.respondToInvite = async (req, res) => {
         const io = req.app.get('io');
         if (io) {
             io.to(`project_${id}`).emit('project_update', updatedProject);
-            // Also notify client user directly?
+            io.to(`user_${project.client_id}`).emit('project_update', updatedProject);
         }
 
         res.json(updatedProject);

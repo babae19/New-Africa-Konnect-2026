@@ -260,11 +260,14 @@ const UserProfile = () => {
         }
     };
 
-    const completeness = profile?.profile_completeness || 0;
+    const completedProfileFields = [formData.name, formData.phone, formData.country, formData.city, formData.bio, formData.company, formData.website];
+    if (isExpert) completedProfileFields.push(formData.title, formData.hourly_rate, formData.skills.length, formData.services.length);
+    const calculatedCompleteness = Math.round((completedProfileFields.filter(Boolean).length / completedProfileFields.length) * 100);
+    const completeness = profile?.profile_completeness || calculatedCompleteness;
     const initials     = (formData.name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
     const navItems = [
-        { id: 'profile',       label: 'My Profile',    icon: User },
+        { id: 'profile',       label: 'Professional Profile', icon: User },
         { id: 'notifications', label: 'Notifications', icon: Bell }
     ];
 
@@ -318,6 +321,10 @@ const UserProfile = () => {
                                     <p className="text-[11px] text-primary font-semibold truncate">{formData.title}</p>
                                 )}
                             </div>
+
+                            <span className="hidden md:inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-600">
+                                {isExpert ? 'Expert profile' : 'Client profile'}
+                            </span>
 
                             {/* Verification badge */}
                             {profile?.vetting_status === 'verified' && (
@@ -441,6 +448,17 @@ const UserProfile = () => {
                                         ${formData.hourly_rate}/hr
                                     </div>
                                 )}
+
+                                <div className="mb-4 grid grid-cols-2 gap-2 border-y border-gray-100 py-3">
+                                    <div>
+                                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Profile status</p>
+                                        <p className="mt-1 text-xs font-bold text-gray-800">{completeness}% complete</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Account type</p>
+                                        <p className="mt-1 text-xs font-bold capitalize text-gray-800">{isExpert ? 'Professional' : 'Client'}</p>
+                                    </div>
+                                </div>
 
                                 {/* Skills preview */}
                                 {formData.skills.length > 0 && (

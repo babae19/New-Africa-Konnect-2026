@@ -194,7 +194,9 @@ const assignExpert = async (projectId, expertId) => {
 const updateExpertStatus = async (projectId, status) => {
     const text = `
         UPDATE projects
-        SET expert_status = $1
+        SET expert_status = $1,
+            status = CASE WHEN $1 = 'accepted' THEN 'active' ELSE status END,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = $2
         RETURNING *
     `;

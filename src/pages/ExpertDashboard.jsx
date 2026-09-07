@@ -13,6 +13,7 @@ import {
 import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { toast } from 'sonner';
 
 // Sub-components can remain or be refactored inline if simple
 import ExpertProfile from '../features/expert/ExpertProfile';
@@ -105,13 +106,13 @@ export default function ExpertDashboard() {
 
     const handleAcceptInvite = async (invite) => {
         try {
-            await api.projects.respondToInvite(invite.project_id || invite.id, 'accepted');
+            const acceptedProject = await api.projects.respondToInvite(invite.project_id || invite.id, 'accepted');
             setInvitations(prev => prev.filter(i => i.id !== invite.id));
-            const invitedRes = await api.projects.getInvitedProjects();
-            const projects = invitedRes.projects || [];
-            setActiveProjects(projects.filter(p => p.expert_status === 'accepted' || p.status === 'active'));
+            setActiveProjects(prev => [acceptedProject, ...prev.filter(project => project.id !== acceptedProject.id)]);
+            toast.success('Project accepted. It is now available in Collaboration.');
         } catch (error) {
             console.error("Failed to accept invite", error);
+            toast.error(error.message || 'Unable to accept this project');
         }
     };
 
@@ -119,8 +120,10 @@ export default function ExpertDashboard() {
         try {
             await api.projects.respondToInvite(invite.project_id || invite.id, 'rejected');
             setInvitations(prev => prev.filter(i => i.id !== invite.id));
+            toast.success('Project request declined');
         } catch (error) {
             console.error("Failed to decline invite", error);
+            toast.error(error.message || 'Unable to decline this project');
         }
     };
 

@@ -199,8 +199,19 @@ export default function Experts() {
     });
 
     const handleHire = (expert) => {
+        if (!user) {
+            toast.error('Please sign in as a client to hire an expert');
+            navigate('/signin');
+            return;
+        }
+        if (user.role !== 'client') {
+            toast.error('Only client accounts can hire experts');
+            return;
+        }
         // Navigate to Project Hub with expert pre-selected for hiring
-        navigate('/project-hub', { state: { expertToHire: expert, view: 'wizard', step: 1 } });
+        navigate('/project-hub', {
+            state: { expertToHire: { ...expert, id: expert.user_id || expert.id }, view: 'wizard', step: 1 }
+        });
     };
 
     const handleMessage = async (expert) => {

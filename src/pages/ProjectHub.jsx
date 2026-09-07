@@ -6,9 +6,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { Plus, Briefcase, ChevronRight, Clock, AlertCircle, DollarSign, Activity, FileText, Check, Trash2 } from 'lucide-react';
+import { Plus, Briefcase, ChevronRight, Clock, AlertCircle, DollarSign, Activity, FileText, Check, Trash2, UserCheck } from 'lucide-react';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
+import { useSocket } from '../hooks/useSocket';
 
 import { Step1Vault } from '../features/project-hub/Step1Vault';
 import { Step2Match } from '../features/project-hub/Step2Match';
@@ -36,6 +37,7 @@ const ProjectHub = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user } = useAuth();
+    const socket = useSocket();
     const { currentProject, clearCurrentProject, setActiveProject, deleteProject } = useProject();
 
     // State for direct hire flow
@@ -95,6 +97,26 @@ const ProjectHub = () => {
         fetchProjects();
     }, [navigate, user]);
 
+    useEffect(() => {
+        if (!socket || !user?.id) return;
+        socket.emit('join_user', user.id);
+
+        const handleProjectUpdate = (updatedProject) => {
+            setClientProjects(prev => {
+                const exists = prev.some(project => project.id === updatedProject.id);
+                return exists
+                    ? prev.map(project => project.id === updatedProject.id ? { ...project, ...updatedProject } : project)
+                    : [updatedProject, ...prev];
+            });
+            if (updatedProject.expert_status === 'accepted') {
+                toast.success('Expert accepted your project. Collaboration is now ready.');
+            }
+        };
+
+        socket.on('project_update', handleProjectUpdate);
+        return () => socket.off('project_update', handleProjectUpdate);
+    }, [socket, user?.id]);
+
     const nextStep = () => {
         if (currentStep < 4) {
             setCurrentStep(currentStep + 1);
@@ -122,10 +144,21 @@ const ProjectHub = () => {
         }
     };
 
+    const handleInvitationSent = (updatedProject) => {
+        setClientProjects(prev => {
+            const exists = prev.some(project => project.id === updatedProject.id);
+            return exists
+                ? prev.map(project => project.id === updatedProject.id ? { ...project, ...updatedProject } : project)
+                : [updatedProject, ...prev];
+        });
+        setExpertToHire(null);
+        setViewMode('list');
+    };
+
     const renderStep = () => {
         switch (currentStep) {
             case 1: return <Step1Vault onNext={nextStep} />;
-            case 2: return <Step2Match onNext={nextStep} expertToHire={expertToHire} />;
+            case 2: return <Step2Match onNext={nextStep} onInvitationSent={handleInvitationSent} expertToHire={expertToHire} />;
             case 3: return <Step3Interview onNext={nextStep} />;
             case 4: return <Step4Contract onNext={nextStep} />;
             default: return <Step1Vault onNext={nextStep} />;
@@ -216,14 +249,14 @@ const ProjectHub = () => {
                     </div>
 
                     {/* Drafts / Saved Projects */}
-                    {clientProjects.some(p => p.status === 'draft') && (
+                    {clientProjects.some(p => p.status === 'draft' && p.expert_status !== 'pending') && (
                         <div className="mb-10">
                             <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
                                 <Clock className="text-orange-500 mr-2" size={20} />
                                 Resume Setup
                             </h2>
                             <div className="grid gap-4 lg:grid-cols-2">
-                                {clientProjects.filter(p => p.status === 'draft').map(p => (
+                                {clientProjects.filter(p => p.status === 'draft' && p.expert_status !== 'pending').map(p => (
                                     <div key={p.id} className="bg-white border border-orange-100 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 flex-shrink-0">
@@ -266,7 +299,10 @@ const ProjectHub = () => {
                         </Card>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {clientProjects.map(p => (
+                            {clientProjects.map(p => {
+                                const awaitingAcceptance = p.expert_status === 'pending';
+                                const collaborationReady = p.expert_status === 'accepted' || ['active', 'in_progress', 'completed'].includes(p.status);
+                                return (
                                 <motion.div key={p.id} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
                                     <Card className="h-full flex flex-col overflow-hidden border-t-4 border-t-primary hover:shadow-xl transition-shadow">
                                         <div className="p-6 flex-1">
@@ -275,7 +311,7 @@ const ProjectHub = () => {
                                                     ${p.status === 'active' ? 'bg-green-100 text-green-700' :
                                                         p.status === 'draft' ? 'bg-gray-100 text-gray-600' :
                                                             'bg-blue-50 text-blue-600'}`}>
-                                                    {p.status}
+                                                    {awaitingAcceptance ? 'Awaiting expert' : p.status}
                                                 </span>
                                                 <div className="flex gap-2">
                                                     <button 
@@ -291,6 +327,13 @@ const ProjectHub = () => {
                                             <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-1">{p.title}</h3>
                                             <p className="text-sm text-gray-500 mb-6 line-clamp-2">{p.description}</p>
 
+                                            {awaitingAcceptance && (
+                                                <div className="mb-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                                                    <Clock size={15} className="mt-0.5 shrink-0" />
+                                                    <span>Your project request is saved. The workspace will activate automatically when the expert accepts.</span>
+                                                </div>
+                                            )}
+
                                             <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t border-gray-100">
                                                 <div className="flex items-center gap-1">
                                                     <Clock size={14} />
@@ -305,8 +348,10 @@ const ProjectHub = () => {
                                         <div className="p-4 bg-gray-50 border-t border-gray-100">
                                             <Button
                                                 className="w-full justify-between group"
+                                                disabled={awaitingAcceptance}
                                                 onClick={() => {
-                                                    if (p.status === 'draft') {
+                                                    if (awaitingAcceptance) return;
+                                                    if (!collaborationReady) {
                                                         setActiveProject(p.id);
                                                         setViewMode('wizard');
                                                         setCurrentStep(1);
@@ -315,13 +360,16 @@ const ProjectHub = () => {
                                                     }
                                                 }}
                                             >
-                                                {p.status === 'draft' ? 'Finish Setup' : 'Open Workspace'}
-                                                <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                                                {awaitingAcceptance ? 'Waiting for Expert' : collaborationReady ? 'Open Collaboration' : 'Finish Setup'}
+                                                {awaitingAcceptance
+                                                    ? <UserCheck size={16} />
+                                                    : <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />}
                                             </Button>
                                         </div>
                                     </Card>
                                 </motion.div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -348,10 +396,9 @@ const ProjectHub = () => {
                     <div className="flex items-center justify-between">
                         <h1 className="text-3xl font-bold text-gray-900">New Project Setup</h1>
                         <Button variant="outline" onClick={() => {
-                            // If project exists, ensure it's not draft if they want to 'submit'
                             if (currentProject?.id) {
-                                // Optional: api.projects.update(currentProject.id, { status: 'active' });
-                                navigate('/project-hub');
+                                toast.success('Project saved in your Project Hub.');
+                                setViewMode('list');
                             } else {
                                 setViewMode('list');
                             }

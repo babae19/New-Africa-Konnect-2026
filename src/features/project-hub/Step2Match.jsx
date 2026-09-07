@@ -7,7 +7,7 @@ import { api } from '../../lib/api';
 import { useProject } from '../../contexts/ProjectContext';
 import { toast } from 'sonner';
 
-const Step2Match = ({ onNext, expertToHire }) => {
+const Step2Match = ({ onNext, onInvitationSent, expertToHire }) => {
     const { currentProject, inviteExpert } = useProject();
     const [loading, setLoading] = useState(true);
     const [statsLoading, setStatsLoading] = useState(true);
@@ -54,7 +54,7 @@ const Step2Match = ({ onNext, expertToHire }) => {
                     }
                     return prev;
                 });
-                setSelectedExperts([expertToHire.id]);
+                setSelectedExperts([expertToHire.user_id || expertToHire.id]);
             }
             setTimeout(() => setStatsLoading(false), 2000);
         }
@@ -141,10 +141,10 @@ const Step2Match = ({ onNext, expertToHire }) => {
             }
             
             // Send invitation to primary expert
-            await inviteExpert(currentProject.id, primaryExpertId);
+            const updatedProject = await inviteExpert(currentProject.id, primaryExpertId);
             
-            toast.success(`Expert invited successfully! They will receive a notification.`);
-            onNext();
+            toast.success('Project saved and sent. Awaiting expert acceptance.');
+            onInvitationSent?.(updatedProject);
         } catch (error) {
             console.error('Invitation failed:', error);
             toast.error('Failed to invite expert: ' + (error.message || 'Please try again.'));
@@ -245,10 +245,10 @@ const Step2Match = ({ onNext, expertToHire }) => {
                 {activeTab === 'matches' ? (
                     experts.map((expert) => (
                         <ExpertCard
-                            key={expert.id}
+                            key={expert.user_id || expert.id}
                             expert={expert}
-                            selected={selectedExperts.includes(expert.id)}
-                            onSelect={() => toggleExpert(expert.id)}
+                            selected={selectedExperts.includes(expert.user_id || expert.id)}
+                            onSelect={() => toggleExpert(expert.user_id || expert.id)}
                             type="match"
                         />
                     ))

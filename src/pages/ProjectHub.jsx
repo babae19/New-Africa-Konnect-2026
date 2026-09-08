@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { Plus, Briefcase, ChevronRight, Clock, AlertCircle, DollarSign, Activity, FileText, Check, Trash2, UserCheck } from 'lucide-react';
+import { Plus, Briefcase, ChevronRight, Clock, AlertCircle, DollarSign, Activity, FileText, Check, Trash2, UserCheck, Store, Video } from 'lucide-react';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
 import { useSocket } from '../hooks/useSocket';
@@ -153,6 +153,14 @@ const ProjectHub = () => {
         });
         setExpertToHire(null);
         setViewMode('list');
+    };
+
+    const publishProject = async (project) => {
+        try {
+            const updated = await api.projects.update(project.id, { status: 'open', open_for_bidding: true });
+            setClientProjects(prev => prev.map(p => p.id === project.id ? { ...p, ...updated } : p));
+            toast.success('Project published to the marketplace.');
+        } catch (error) { toast.error(error.message || 'Could not publish project.'); }
     };
 
     const renderStep = () => {
@@ -346,6 +354,14 @@ const ProjectHub = () => {
                                         </div>
 
                                         <div className="p-4 bg-gray-50 border-t border-gray-100">
+                                            <div className="grid grid-cols-2 gap-2 mb-2">
+                                                {!p.open_for_bidding ? (
+                                                    <Button size="sm" variant="outline" onClick={() => publishProject(p)}><Store size={14} /> Publish</Button>
+                                                ) : (
+                                                    <Button size="sm" variant="outline" onClick={() => navigate(`/marketplace/projects/${p.id}/bids`)}><UserCheck size={14} /> Manage interest</Button>
+                                                )}
+                                                <Button size="sm" variant="outline" onClick={() => navigate(`/collaboration?projectId=${p.id}&tab=video`)}><Video size={14} /> Meeting</Button>
+                                            </div>
                                             <Button
                                                 className="w-full justify-between group"
                                                 disabled={awaitingAcceptance}

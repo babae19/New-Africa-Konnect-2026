@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import { Search, MapPin, Star, Filter, Verified, Briefcase, ExternalLink, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { Search, MapPin, Star, Filter, Verified, Briefcase, ExternalLink, SlidersHorizontal, ChevronDown, Users, BadgeCheck, MessageSquare } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import SEO from '../components/SEO';
@@ -58,8 +58,8 @@ const ExpertCard = ({ expert, onHire, onMessage }) => {
                             <div className="text-xl font-bold text-gray-900">${expert.hourly_rate || 0}<span className="text-sm text-gray-400 font-normal">/hr</span></div>
                             <div className="flex items-center justify-end gap-1 text-yellow-500 text-sm font-bold">
                                 <Star size={14} fill="currentColor" />
-                                <span>{expert.rating || "5.0"}</span>
-                                <span className="text-gray-300 font-normal">({expert.review_count || 1} reviews)</span>
+                                <span>{expert.rating ? Number(expert.rating).toFixed(1) : 'New'}</span>
+                                <span className="text-gray-300 font-normal">({expert.review_count || 0} reviews)</span>
                             </div>
                         </div>
                     </div>
@@ -142,7 +142,8 @@ export default function Experts() {
         search: searchParams.get('q') || '',
         category: 'all',
         minRate: 0,
-        maxRate: 500
+        maxRate: 500,
+        skills: []
     });
     const [showFilters, setShowFilters] = useState(false); // Mobile filter toggle
 
@@ -194,8 +195,9 @@ export default function Experts() {
             expert.skills?.some(s => s.toLowerCase().includes(filters.search.toLowerCase()));
 
         const matchesRate = (expert.hourly_rate || 0) >= filters.minRate && (expert.hourly_rate || 0) <= filters.maxRate;
+        const matchesSkills = filters.skills.length === 0 || filters.skills.some(skill => expert.skills?.some(item => item.toLowerCase().includes(skill.toLowerCase())));
 
-        return matchesSearch && matchesRate;
+        return matchesSearch && matchesRate && matchesSkills;
     });
 
     const handleHire = (expert) => {
@@ -235,10 +237,12 @@ export default function Experts() {
         <div className="min-h-screen bg-gray-50 pt-24 pb-12">
 
             <div className="container mx-auto px-4 md:px-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div className="rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-primary p-7 md:p-10 text-white mb-8 shadow-xl">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Find Experts</h1>
-                        <p className="text-gray-500 mt-1">Connect with top-tier professionals for your project.</p>
+                        <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-blue-200 mb-3"><BadgeCheck size={15} /> Africa-wide talent network</div>
+                        <h1 className="text-3xl md:text-4xl font-black">Find the right expert</h1>
+                        <p className="text-blue-100 mt-2 max-w-xl">Review real profiles, compare relevant skills, message directly, or begin a structured hiring project.</p>
                     </div>
                     <div className="flex items-center gap-2 w-full md:w-auto">
                         <div className="relative flex-1 md:w-80">
@@ -246,7 +250,7 @@ export default function Experts() {
                             <input
                                 type="text"
                                 placeholder="Search by name, skill, or title..."
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-white/20 text-gray-900 bg-white focus:outline-none focus:ring-4 focus:ring-white/20 transition-all shadow-sm"
                                 value={filters.search}
                                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                             />
@@ -260,6 +264,8 @@ export default function Experts() {
                         </Button>
                     </div>
                 </div>
+                <div className="mt-7 flex flex-wrap gap-5 text-sm text-blue-100"><span className="flex items-center gap-2"><Users size={16} /> {filteredExperts.length} experts</span><span className="flex items-center gap-2"><MessageSquare size={16} /> Direct messaging</span><span className="flex items-center gap-2"><Briefcase size={16} /> Secure collaboration</span></div>
+                </div>
 
                 <div className="flex flex-col md:flex-row gap-8">
                     {/* Filters Sidebar (Desktop) */}
@@ -267,7 +273,7 @@ export default function Experts() {
                         <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm sticky top-24">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="font-bold text-lg flex items-center gap-2"><SlidersHorizontal size={18} /> Filters</h3>
-                                <button className="text-xs text-primary font-bold hover:underline" onClick={() => setFilters({ search: '', category: 'all', minRate: 0, maxRate: 500 })}>Reset</button>
+                                <button className="text-xs text-primary font-bold hover:underline" onClick={() => setFilters({ search: '', category: 'all', minRate: 0, maxRate: 500, skills: [] })}>Reset</button>
                             </div>
 
                             <FilterSection title="Hourly Rate">
@@ -292,9 +298,7 @@ export default function Experts() {
                                 <div className="space-y-2">
                                     {['React', 'Node.js', 'Python', 'Design', 'Marketing'].map(skill => (
                                         <label key={skill} className="flex items-center gap-3 cursor-pointer group">
-                                            <div className="w-5 h-5 rounded border border-gray-300 flex items-center justify-center group-hover:border-primary transition-colors">
-                                                {/* Checkbox logic would go here */}
-                                            </div>
+                                            <input type="checkbox" checked={filters.skills.includes(skill)} onChange={() => setFilters(prev => ({ ...prev, skills: prev.skills.includes(skill) ? prev.skills.filter(item => item !== skill) : [...prev.skills, skill] }))} className="w-4 h-4 accent-primary" />
                                             <span className="text-gray-600 group-hover:text-primary transition-colors">{skill}</span>
                                         </label>
                                     ))}

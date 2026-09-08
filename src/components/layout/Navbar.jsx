@@ -13,6 +13,8 @@ const Navbar = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { user, profile, signOut, isExpert, isClient } = useAuth();
+    const avatarUrl = profile?.profile_image_url || profile?.avatar_url || user?.profile_image_url || user?.avatar_url;
+    const displayName = profile?.name || user?.name || user?.email?.split('@')[0] || 'User';
 
     const handleLogout = async () => {
         await signOut();
@@ -106,10 +108,10 @@ const Navbar = () => {
                                                     <div className="absolute inset-0 bg-gradient-to-r from-primary to-blue-600 rounded-full blur-sm opacity-60 group-hover:opacity-100 transition-opacity"></div>
                                                     <div className="relative w-11 h-11 rounded-full bg-white p-[2px]">
                                                         <div className="w-full h-full rounded-full overflow-hidden">
-                                                            {(profile?.profile_image_url || user?.profile_image_url) ? (
+                                                            {avatarUrl ? (
                                                                 <img
-                                                                    src={profile?.profile_image_url || user?.profile_image_url}
-                                                                    alt="Profile"
+                                                                    src={avatarUrl}
+                                                                    alt={`${displayName}'s profile`}
                                                                     className="w-full h-full object-cover"
                                                                     onError={(e) => {
                                                                         e.target.style.display = 'none';
@@ -119,10 +121,10 @@ const Navbar = () => {
                                                             ) : null}
                                                             <div
                                                                 className="w-full h-full bg-gradient-to-br from-primary/20 to-blue-600/20 flex items-center justify-center"
-                                                                style={{ display: (profile?.profile_image_url || user?.profile_image_url) ? 'none' : 'flex' }}
+                                                                style={{ display: avatarUrl ? 'none' : 'flex' }}
                                                             >
                                                                 <span className="text-primary font-bold text-lg">
-                                                                    {(profile?.name || user?.name || user?.email)?.charAt(0).toUpperCase()}
+                                                                    {displayName.charAt(0).toUpperCase()}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -134,7 +136,7 @@ const Navbar = () => {
                                                 {/* User Info */}
                                                 <div className="text-left hidden lg:block">
                                                     <p className="text-sm font-bold text-gray-900 leading-tight">
-                                                        {profile?.name || user?.name || user?.email?.split('@')[0]}
+                                                        {displayName}
                                                     </p>
                                                     <p className="text-[10px] font-black uppercase tracking-[0.1em] text-primary/80 flex items-center gap-1.5">
                                                         {isExpert ? (

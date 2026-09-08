@@ -107,6 +107,10 @@ const Step3Interview = ({ onNext }) => {
     };
 
     const handleJoinMeeting = (interview) => {
+        if (interview.meeting_link?.startsWith('https://meet.google.com/')) {
+            window.open(interview.meeting_link, '_blank', 'noopener,noreferrer');
+            return;
+        }
         // If meeting_link is a full URL (legacy), extract room name or just use it. 
         // For new ones, it's just the room name.
         let roomName = interview.meeting_link;

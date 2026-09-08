@@ -8,6 +8,7 @@ import { api } from '../lib/api';
 import { Step4Contract } from '../features/project-hub/Step4Contract';
 import DirectMessagesPanel from '../components/collaboration/DirectMessagesPanel';
 import MeetingRoom from '../components/common/MeetingRoom';
+import ScheduleInterviewModal from '../components/ScheduleInterviewModal';
 import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -565,20 +566,23 @@ const TasksTab = ({ tasks, onCreate, onUpdateStatus, project }) => {
 };
 
 // ─── VIDEO CONFERENCE TAB ─────────────────────────────────────────────────────
-const VideoConferenceTab = ({ project, user, onNotify }) => {
+const VideoConferenceTab = ({ project, user, onNotify, interviews = [], onSchedule }) => {
     const [inMeeting, setInMeeting] = useState(false);
     const [copied, setCopied]       = useState(false);
     const [joining, setJoining]     = useState(false);
     const [meetingError, setMeetingError] = useState('');
+    const [showSchedule, setShowSchedule] = useState(false);
 
-    const meetingLink = `${window.location.origin}${window.location.pathname}?projectId=${project.id}&tab=video`;
+    const upcomingMeeting = [...interviews].filter(item => item.meeting_link).sort((a, b) => new Date(b.scheduled_at || b.scheduled_time) - new Date(a.scheduled_at || a.scheduled_time))[0];
+    const meetingLink = upcomingMeeting?.meeting_link || '';
 
     const handleJoin = async () => {
+        if (!meetingLink) { setShowSchedule(true); return; }
         setJoining(true);
         setMeetingError('');
-        setInMeeting(true);
+        window.open(meetingLink, '_blank', 'noopener,noreferrer');
         try {
-            await onNotify?.(`📹 I've started a secure video meeting for **${project.title}**.\n\nJoin here: ${meetingLink}`);
+            await onNotify?.(`📹 Google Meet is ready for **${project.title}**.\n\nJoin here: ${meetingLink}`);
         } catch {
             toast.warning('Meeting opened, but the team notification could not be sent. Copy and share the link.');
         } finally {
@@ -587,6 +591,7 @@ const VideoConferenceTab = ({ project, user, onNotify }) => {
     };
 
     const handleCopy = async () => {
+        if (!meetingLink) { setShowSchedule(true); return; }
         try {
             await navigator.clipboard.writeText(meetingLink);
             setCopied(true);
@@ -651,8 +656,8 @@ const VideoConferenceTab = ({ project, user, onNotify }) => {
                 </div>
 
                 <div>
-                    <h2 className="text-2xl font-black text-gray-900 mb-2">Team Video Room</h2>
-                    <p className="text-gray-500 text-sm">A shared browser-based room for both client and expert. No account or download is required.</p>
+                    <h2 className="text-2xl font-black text-gray-900 mb-2">Google Meet Workspace</h2>
+                    <p className="text-gray-500 text-sm">Schedule a Google Meet with automatic calendar invitations for the client and expert.</p>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-left">
@@ -670,7 +675,7 @@ const VideoConferenceTab = ({ project, user, onNotify }) => {
                 {/* Meeting link preview */}
                 <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-left">
                     <Link size={13} className="text-gray-400 flex-shrink-0" />
-                    <input readOnly value={meetingLink} onFocus={e => e.target.select()} className="text-xs text-gray-500 truncate flex-1 bg-transparent outline-none" aria-label="Meeting invite link" />
+                    <input readOnly value={meetingLink || 'Schedule a meeting to generate the Google Meet link'} onFocus={e => e.target.select()} className="text-xs text-gray-500 truncate flex-1 bg-transparent outline-none" aria-label="Meeting invite link" />
                     <button onClick={handleCopy} className="text-xs font-bold text-primary hover:text-primary/80 flex-shrink-0">
                         {copied ? 'Copied!' : 'Copy'}
                     </button>
@@ -682,20 +687,31 @@ const VideoConferenceTab = ({ project, user, onNotify }) => {
                         className="w-full py-4 text-base font-bold text-white bg-primary hover:bg-primary/90 rounded-2xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.99] transition-all"
                     >
                         <Video size={18} className="inline mr-2" />
-                        {joining ? 'Opening meeting…' : 'Start Meeting & Notify Team'}
+                        {joining ? 'Opening Google Meet…' : meetingLink ? 'Join Google Meet & Notify Team' : 'Schedule Google Meet'}
                     </button>
                     <button onClick={handleCopy}
                         className="w-full py-3 text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:border-gray-300 rounded-2xl transition-colors">
                         {copied ? <><Check size={14} className="inline mr-1.5 text-green-500" />Link copied!</> : 'Copy invite link only'}
                     </button>
-                    <button onClick={() => window.open(meetingLink, '_blank', 'noopener,noreferrer')}
+                    <button onClick={() => meetingLink ? window.open(meetingLink, '_blank', 'noopener,noreferrer') : setShowSchedule(true)}
                         className="w-full py-3 text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:border-primary rounded-2xl transition-colors">
-                        <ExternalLink size={14} className="inline mr-1.5" /> Open meeting in a new tab
+                        <ExternalLink size={14} className="inline mr-1.5" /> {meetingLink ? 'Open Meet in a new tab' : 'Choose meeting date and time'}
                     </button>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-[11px] text-gray-400">
                     <LockKeyhole size={13} className="text-green-500" /> Only project participants receive this room link.
                 </div>
+                <ScheduleInterviewModal
+                    isOpen={showSchedule}
+                    onClose={() => setShowSchedule(false)}
+                    expertName={project.selected_expert_name || 'the expert'}
+                    onSchedule={async details => {
+                        if (!project.selected_expert_id) throw new Error('Select an expert before scheduling a meeting.');
+                        await onSchedule({ ...details, expertId: project.selected_expert_id });
+                        toast.success('Google Meet created and calendar invitations sent.');
+                        setShowSchedule(false);
+                    }}
+                />
             </div>
         </div>
     );
@@ -927,7 +943,7 @@ export default function Collaboration() {
                         {activeTab === 'tasks'     && <TasksTab tasks={data.tasks} onCreate={actions.createTask} onUpdateStatus={actions.updateTaskStatus} project={project} />}
                         {activeTab === 'files'     && <FilesTab files={data.files} onUpload={actions.uploadFile} />}
                         {activeTab === 'contracts' && <ContractTab project={project} liveContract={data.contracts?.[0]} />}
-                        {activeTab === 'video'     && <VideoConferenceTab project={project} user={user} onNotify={actions.sendMessage} />}
+                        {activeTab === 'video'     && <VideoConferenceTab project={project} user={user} onNotify={actions.sendMessage} interviews={data.interviews} onSchedule={actions.scheduleInterview} />}
                         {activeTab === 'dm'        && <DirectMessagesPanel project={project} />}
                         {activeTab === 'overview' && <div className="mt-6"><CompletionPanel project={project} user={user} onProjectChange={setProject} onDeleted={() => navigate(user?.role === 'expert' ? '/expert-dashboard' : '/project-hub')} /></div>}
                     </motion.div>

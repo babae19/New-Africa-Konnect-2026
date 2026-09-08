@@ -8,7 +8,7 @@ const {
     deleteBid,
     rejectOtherBids
 } = require('../models/bidModel');
-const { getProjectById, updateProject } = require('../models/projectModel');
+const { getProjectById, updateProject, addMember } = require('../models/projectModel');
 const { createContract } = require('../models/contractModel');
 const { NOTIFICATION_TYPES, emitNotification, emitToMultipleUsers } = require('../utils/biddingNotifications');
 const { getIO } = require('../socket');
@@ -75,6 +75,7 @@ exports.submitBid = async (req, res) => {
                 expertName: req.user.name,
                 bidAmount: bidAmount
             });
+            io.to('marketplace').emit('new_bid', { projectId, expertName: req.user.name });
         }
 
         res.status(201).json(bid);
@@ -156,8 +157,11 @@ exports.acceptBid = async (req, res) => {
         await updateProject(projectId, {
             selectedExpertId: bid.expert_id,
             status: 'in_progress',
-            open_for_bidding: false
+            open_for_bidding: false,
+            expertStatus: 'accepted'
         });
+        await addMember(projectId, bid.expert_id, 'expert');
+        await addMember(projectId, project.client_id, 'client');
 
         // Create a contract automatically
         const contract = await createContract({
@@ -205,6 +209,7 @@ exports.acceptBid = async (req, res) => {
                 bid: acceptedBid,
                 contract: contract
             });
+            io.to('marketplace').emit('marketplace_project_removed', { id: projectId });
         }
 
         res.json({ 

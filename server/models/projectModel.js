@@ -103,7 +103,7 @@ const getAllProjects = async (filters = {}) => {
 
 // Update project
 const updateProject = async (id, projectData) => {
-    const { title, description, budget, status, techStack, min_budget, max_budget, open_for_bidding, bidding_deadline, duration, visibility } = projectData;
+    const { title, description, budget, status, techStack, min_budget, max_budget, open_for_bidding, bidding_deadline, duration, visibility, selectedExpertId, expertStatus } = projectData;
 
     const text = `
         UPDATE projects 
@@ -118,11 +118,14 @@ const updateProject = async (id, projectData) => {
             open_for_bidding = COALESCE($8, open_for_bidding),
             bidding_deadline = COALESCE($9, bidding_deadline),
             duration = COALESCE($10, duration),
-            visibility = COALESCE($11, visibility)
-        WHERE id = $12
+            visibility = COALESCE($11, visibility),
+            selected_expert_id = COALESCE($12, selected_expert_id),
+            expert_status = COALESCE($13, expert_status),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $14
         RETURNING *
     `;
-    const values = [title, description, budget, status, techStack, min_budget, max_budget, open_for_bidding, bidding_deadline, duration, visibility, id];
+    const values = [title, description, budget, status, techStack, min_budget, max_budget, open_for_bidding, bidding_deadline, duration, visibility, selectedExpertId, expertStatus, id];
     const result = await query(text, values);
     return result.rows[0];
 };

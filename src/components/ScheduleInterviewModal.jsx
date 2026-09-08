@@ -94,7 +94,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSchedule, expertName = 'the
                         <div>
                             <p className="font-semibold text-blue-900 text-sm">Video Conferencing</p>
                             <p className="text-xs text-blue-700 mt-1">
-                                A secure Jitsi meeting link will be created and shared with both parties automatically.
+                                A Google Meet link and calendar invitation will be created and shared with both parties automatically.
                             </p>
                         </div>
                     </div>

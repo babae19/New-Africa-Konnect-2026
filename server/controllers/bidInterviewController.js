@@ -3,19 +3,13 @@ const { getBidById } = require('../models/bidModel');
 const { getProjectById } = require('../models/projectModel');
 const { NOTIFICATION_TYPES, emitNotification } = require('../utils/biddingNotifications');
 const { getIO } = require('../socket');
+const { createCalendarEvent } = require('../services/calendarService');
 
 // Schedule interview for a bid
 const scheduleInterview = async (req, res) => {
     try {
         const { projectId, bidId } = req.params;
         let { scheduledTime, duration, meetingLink, meetingPlatform, clientNotes } = req.body;
-
-        const { v4: uuidv4 } = require('uuid');
-        if (!meetingLink) {
-            const meetingRoom = uuidv4();
-            meetingLink = `https://africakonnect.com/africakonnect-${meetingRoom}`;
-            if (!meetingPlatform) meetingPlatform = 'Jitsi';
-        }
 
         // Verify project ownership
         const project = await getProjectById(projectId);
@@ -28,6 +22,15 @@ const scheduleInterview = async (req, res) => {
         if (!bid) {
             return res.status(404).json({ message: 'Bid not found' });
         }
+
+        const start = new Date(scheduledTime);
+        const calendarEvent = await createCalendarEvent({
+            summary: `${project.title} — Africa Konnect Interview`, description: clientNotes || 'Marketplace expert interview.',
+            startTime: start, endTime: new Date(start.getTime() + (duration || 30) * 60000),
+            attendees: [project.client_email, bid.expert_email]
+        });
+        meetingLink = calendarEvent.meetingLink;
+        meetingPlatform = 'Google Meet';
 
         // Create interview
         const interview = await createBidInterview({
@@ -54,7 +57,7 @@ const scheduleInterview = async (req, res) => {
         res.status(201).json({ interview, message: 'Interview scheduled successfully' });
     } catch (error) {
         console.error('Schedule interview error:', error);
-        res.status(500).json({ message: error.message });
+        res.status(error.code === 'GOOGLE_MEET_NOT_CONFIGURED' ? 503 : 500).json({ message: error.message, code: error.code });
     }
 };
 

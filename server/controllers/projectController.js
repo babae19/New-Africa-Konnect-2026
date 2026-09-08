@@ -174,6 +174,7 @@ exports.updateProject = async (req, res) => {
         const io = req.app.get('io');
         if (io) {
             io.to(`project_${id}`).emit('project_update', updatedProject);
+            io.to('marketplace').emit(updatedProject.open_for_bidding && updatedProject.status === 'open' ? 'marketplace_project_upserted' : 'marketplace_project_removed', updatedProject);
         }
 
         res.json(updatedProject);

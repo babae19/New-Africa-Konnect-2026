@@ -9,11 +9,12 @@ import {
     ChevronLeft, Loader2, Sparkles, CheckCircle, 
     XCircle, Clock, DollarSign, ExternalLink, 
     User, Award, Briefcase, FileText,
-    MessageSquare, TrendingUp, AlertTriangle
+    MessageSquare, TrendingUp, AlertTriangle, Video
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import socketService from '../lib/socket';
+import ScheduleInterviewModal from '../components/ScheduleInterviewModal';
 
 const ManageProjectBids = () => {
     const { id } = useParams();
@@ -26,6 +27,7 @@ const ManageProjectBids = () => {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysis, setAnalysis] = useState(null);
     const [isAnalysisVisible, setIsAnalysisVisible] = useState(false);
+    const [interviewBid, setInterviewBid] = useState(null);
 
     useEffect(() => {
         fetchData();
@@ -56,10 +58,15 @@ const ManageProjectBids = () => {
         } catch (error) {
             console.error('Failed to fetch data:', error);
             toast.error('Failed to load project or bids');
-            navigate('/collaboration');
+            navigate('/collaboration', { state: { projectId: id } });
         } finally {
             setLoading(false);
         }
+    };
+
+    const scheduleInterview = async (details) => {
+        await api.interviews.schedule({ ...details, projectId: id, expertId: interviewBid.expert_id });
+        toast.success('Google Meet interview created and shared with the expert.');
     };
 
     const fetchBids = async () => {
@@ -268,8 +275,8 @@ const ManageProjectBids = () => {
                                             </Button>
                                         </div>
                                         
-                                        <button className="flex items-center justify-center gap-2 text-sm font-bold text-gray-400 hover:text-primary transition-colors mt-2">
-                                            <MessageSquare size={16} /> Chat with Expert
+                                        <button onClick={() => setInterviewBid(bid)} className="flex items-center justify-center gap-2 text-sm font-bold text-gray-500 hover:text-primary transition-colors mt-2">
+                                            <Video size={16} /> Schedule Google Meet
                                         </button>
                                     </div>
                                 </div>
@@ -277,6 +284,7 @@ const ManageProjectBids = () => {
                         ))
                     )}
                 </div>
+                <ScheduleInterviewModal isOpen={!!interviewBid} onClose={() => setInterviewBid(null)} onSchedule={scheduleInterview} expertName={interviewBid?.expert_name} />
             </div>
         </div>
     );

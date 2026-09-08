@@ -78,6 +78,9 @@ const setupSocket = (server) => {
             }
         });
 
+        socket.on('join_marketplace', () => socket.join('marketplace'));
+        socket.on('leave_marketplace', () => socket.leave('marketplace'));
+
         socket.on('disconnect', () => {
             // console.log('Client disconnected:', socket.id);
         });

@@ -12,10 +12,12 @@ import {
     DollarSign, Clock, MapPin, Calendar, Tag, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useSocket } from '../hooks/useSocket';
 
 const ProjectMarketplace = () => {
     const { user, isClient } = useAuth();
     const navigate = useNavigate();
+    const socket = useSocket();
 
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -51,6 +53,21 @@ const ProjectMarketplace = () => {
         }, 500);
         return () => clearTimeout(timer);
     }, [filters]);
+
+    useEffect(() => {
+        if (!socket) return undefined;
+        const refresh = () => fetchMarketplaceProjects();
+        socket.emit('join_marketplace');
+        socket.on('marketplace_project_upserted', refresh);
+        socket.on('marketplace_project_removed', refresh);
+        socket.on('new_bid', refresh);
+        return () => {
+            socket.emit('leave_marketplace');
+            socket.off('marketplace_project_upserted', refresh);
+            socket.off('marketplace_project_removed', refresh);
+            socket.off('new_bid', refresh);
+        };
+    }, [socket]);
 
     const fetchMarketplaceProjects = async () => {
         setLoading(true);

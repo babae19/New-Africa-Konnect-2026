@@ -5,7 +5,7 @@ const {
     updateInterviewStatus
 } = require('../models/interviewModel');
 const { getProjectById } = require('../models/projectModel');
-const { v4: uuidv4 } = require('uuid');
+const { createCalendarEvent } = require('../services/calendarService');
 
 // Schedule an interview
 exports.scheduleInterview = async (req, res) => {
@@ -31,13 +31,16 @@ exports.scheduleInterview = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to schedule for this project' });
         }
 
-        // Use provided meeting link (from client/frontend logic) or generate one
-        let meetingLink = req.body.meetingLink;
-
-        if (!meetingLink) {
-            const meetingRoom = uuidv4();
-            meetingLink = `https://africakonnect.com/africakonnect-${meetingRoom}`;
-        }
+        const { findUserById } = require('../models/userModel');
+        const expert = await findUserById(expertId);
+        if (!expert) return res.status(404).json({ message: 'Expert not found' });
+        const start = new Date(scheduledAt);
+        const calendarEvent = await createCalendarEvent({
+            summary: `${project.title} — Africa Konnect Interview`, description: notes || 'Project interview arranged through Africa Konnect.',
+            startTime: start, endTime: new Date(start.getTime() + durationMinutes * 60000),
+            attendees: [project.client_email, expert.email]
+        });
+        const meetingLink = calendarEvent.meetingLink;
 
         const interview = await createInterview({
             projectId,
@@ -72,7 +75,7 @@ exports.scheduleInterview = async (req, res) => {
         res.status(201).json(interview);
     } catch (error) {
         console.error('Schedule error:', error);
-        res.status(500).json({ message: error.message });
+        res.status(error.code === 'GOOGLE_MEET_NOT_CONFIGURED' ? 503 : 500).json({ message: error.message, code: error.code });
     }
 };
 

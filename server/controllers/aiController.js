@@ -1,158 +1,37 @@
 const pool = require('../database/db');
 
-// ─── Gemini API Configuration ──────────────────────────────────────────────────
-const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
-const GEMINI_MODEL = 'gemini-3.5-flash';
+// ─── OpenAI / ChatGPT API Configuration ───────────────────────────────────────
+const OpenAI = require('openai');
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
+
+const getOpenAI = () => {
+    if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is missing from environment configuration.');
+    return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+};
 
 /**
  * Call Gemini API for text (and optional image) generation
  */
 async function callGeminiAPI(promptStr, imageData = null) {
-    const fetchFn = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default;
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        throw new Error('GEMINI_API_KEY is missing from environment configuration.');
-    }
-
-    // Build the parts array
-    const parts = [{ text: promptStr }];
-
-    // If image data is provided, add it as inline_data
-    if (imageData) {
-        // Strip data URI prefix if present to get raw base64
-        let base64Data = imageData;
-        let mimeType = 'image/jpeg';
-
-        if (imageData.startsWith('data:')) {
-            const match = imageData.match(/^data:(image\/\w+);base64,(.+)$/);
-            if (match) {
-                mimeType = match[1];
-                base64Data = match[2];
-            }
-        }
-
-        parts.push({
-            inline_data: {
-                mime_type: mimeType,
-                data: base64Data
-            }
-        });
-    }
-
-    const url = `${GEMINI_BASE_URL}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-
-    const payload = {
-        contents: [{
-            parts: parts
-        }],
-        generationConfig: {
-            temperature: 0.7,
-            topP: 0.95,
-            maxOutputTokens: 4096
-        }
-    };
-
-    try {
-        const response = await fetchFn(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            const errorBody = await response.text();
-            throw new Error(`Gemini API Error: ${response.status} - ${errorBody}`);
-        }
-
-        const data = await response.json();
-
-        // Extract text from Gemini response format
-        if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-            return data.candidates[0].content.parts[0].text;
-        }
-
-        // Fallback: check for blocked content
-        if (data.candidates && data.candidates[0]?.finishReason === 'SAFETY') {
-            throw new Error('Response was blocked by safety filters. Please rephrase your request.');
-        }
-
-        throw new Error('Unexpected Gemini API response format');
-    } catch (e) {
-        console.error('Gemini API Error details:', e.message);
-        throw e;
-    }
+    const content = [{ type: 'input_text', text: promptStr }];
+    if (imageData) content.push({ type: 'input_image', image_url: imageData, detail: 'auto' });
+    const response = await getOpenAI().responses.create({
+        model: OPENAI_MODEL,
+        input: [{ role: 'user', content }],
+        max_output_tokens: 4096
+    });
+    if (!response.output_text) throw new Error('ChatGPT returned an empty response.');
+    return response.output_text;
 }
 
 /**
  * Call Gemini API with streaming for real-time text output
  */
 async function callGeminiAPIStream(promptStr, onChunk) {
-    const fetchFn = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default;
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        throw new Error('GEMINI_API_KEY is missing from environment configuration.');
+    const stream = await getOpenAI().responses.create({ model: OPENAI_MODEL, input: promptStr, stream: true });
+    for await (const event of stream) {
+        if (event.type === 'response.output_text.delta' && event.delta) onChunk(event.delta);
     }
-
-    const url = `${GEMINI_BASE_URL}/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse&key=${apiKey}`;
-
-    const payload = {
-        contents: [{
-            parts: [{ text: promptStr }]
-        }],
-        generationConfig: {
-            temperature: 0.7,
-            topP: 0.95,
-            maxOutputTokens: 4096
-        }
-    };
-
-    const response = await fetchFn(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`Gemini Stream Error: ${response.status} - ${errorBody}`);
-    }
-
-    // Parse the SSE stream from Gemini
-    const reader = response.body;
-
-    return new Promise((resolve, reject) => {
-        let buffer = '';
-
-        reader.on('data', (chunk) => {
-            buffer += chunk.toString();
-
-            // Process complete SSE events
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const jsonStr = line.slice(6).trim();
-                    if (!jsonStr || jsonStr === '[DONE]') continue;
-
-                    try {
-                        const parsed = JSON.parse(jsonStr);
-                        const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (text) {
-                            onChunk(text);
-                        }
-                    } catch (e) {
-                        // Skip malformed JSON chunks
-                    }
-                }
-            }
-        });
-
-        reader.on('end', () => resolve());
-        reader.on('error', (err) => reject(err));
-    });
 }
 
 /**

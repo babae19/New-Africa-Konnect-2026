@@ -39,7 +39,15 @@ exports.uploadFile = async (req, res) => {
                 upsert: false
             });
 
-        if (error) throw error;
+        if (error) {
+            if (/row-level security|policy/i.test(error.message || '')) {
+                return res.status(503).json({
+                    message: 'Document storage is not configured for secure server uploads. Please contact support.',
+                    code: 'STORAGE_RLS_CONFIGURATION'
+                });
+            }
+            throw error;
+        }
 
         const { data: { publicUrl } } = supabase
             .storage

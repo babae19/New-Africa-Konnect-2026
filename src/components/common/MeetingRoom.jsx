@@ -9,7 +9,7 @@ const safeRoomName = (value = '') => `AfricaKonnect-${String(value).replace(/[^a
  * same live meeting from the shared project link. Jitsi supplies WebRTC audio,
  * video, screen sharing and participant controls without client-side secrets.
  */
-const MeetingRoom = ({ roomName, userName, onLeave, meetingId }) => (
+const MeetingRoom = ({ roomName, userName, onLeave, onReady, onError, meetingId }) => (
     <div className="h-full min-h-[520px] w-full overflow-hidden rounded-xl bg-gray-950">
         <JitsiMeeting
             domain="meet.jit.si"
@@ -18,7 +18,13 @@ const MeetingRoom = ({ roomName, userName, onLeave, meetingId }) => (
                 prejoinPageEnabled: true,
                 disableDeepLinking: true,
                 startWithAudioMuted: false,
-                startWithVideoMuted: false
+                startWithVideoMuted: false,
+                enableWelcomePage: false,
+                toolbarButtons: [
+                    'microphone', 'camera', 'desktop', 'chat', 'participants-pane',
+                    'raisehand', 'tileview', 'select-background', 'settings',
+                    'fullscreen', 'hangup'
+                ]
             }}
             interfaceConfigOverwrite={{
                 MOBILE_APP_PROMO: false,
@@ -31,6 +37,10 @@ const MeetingRoom = ({ roomName, userName, onLeave, meetingId }) => (
                 </div>
             )}
             onReadyToClose={onLeave}
+            onApiReady={api => {
+                api.addListener('videoConferenceJoined', onReady || (() => {}));
+                api.addListener('errorOccurred', onError || (() => {}));
+            }}
             getIFrameRef={iframe => {
                 iframe.style.height = '100%';
                 iframe.style.minHeight = '520px';

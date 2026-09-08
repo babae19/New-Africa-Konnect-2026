@@ -36,6 +36,9 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'"],
             scriptSrc: ["'self'"],
             imgSrc: ["'self'", "data:", "https:"],
+            frameSrc: ["'self'", "https://meet.jit.si"],
+            connectSrc: ["'self'", "https:", "wss:"],
+            mediaSrc: ["'self'", "blob:"],
         },
     },
     crossOriginEmbedderPolicy: false, // Allow embedding for Socket.IO

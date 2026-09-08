@@ -134,6 +134,22 @@ const deleteProject = async (id) => {
     return result.rows[0];
 };
 
+const updateCompletionWorkflow = async (projectId, action, userId) => {
+    const updates = {
+        accept_delivery: `delivery_accepted_at = CURRENT_TIMESTAMP, finalized_at = CURRENT_TIMESTAMP,
+                          status = 'completed', state = 'completed'`,
+        request_deletion: `deletion_requested_at = CURRENT_TIMESTAMP, deletion_requested_by = $2,
+                           deletion_consented_at = NULL, deletion_consented_by = NULL`,
+        consent_deletion: `deletion_consented_at = CURRENT_TIMESTAMP, deletion_consented_by = $2`
+    };
+    if (!updates[action]) throw new Error('Invalid completion action');
+    const result = await query(
+        `UPDATE projects SET ${updates[action]}, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
+        [projectId, userId]
+    );
+    return result.rows[0];
+};
+
 // Get project count by status
 const getProjectCountByStatus = async (clientId = null) => {
     let text = `
@@ -280,6 +296,7 @@ module.exports = {
     getAllProjects,
     updateProject,
     deleteProject,
+    updateCompletionWorkflow,
     getProjectCountByStatus,
     getProjectsWithContracts,
     assignExpert,

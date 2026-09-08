@@ -5,10 +5,13 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY; // Ideally Service Role Key, but Anon works if RLS allows
+// Storage writes are performed by our authenticated API, not directly by a
+// Supabase-authenticated browser.  The server must therefore use the service
+// role key; using the public anon key makes every upload fail storage RLS.
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-    console.warn('⚠️ Supabase URL or Key missing in backend environment variables.');
+    console.warn('⚠️ SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing in the backend environment.');
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);

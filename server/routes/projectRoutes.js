@@ -14,6 +14,7 @@ const {
     getHistory: getProjectStateHistory,
     getOrCreateInquiry
 } = require('../controllers/projectController');
+const { updateCompletion } = require('../controllers/projectController');
 const { getMarketplace } = require('../controllers/marketplaceController');
 const { fundEscrow, releaseFunds, getHistory } = require('../controllers/transactionController');
 const { protect, authorize } = require('../middleware/authMiddleware');
@@ -43,6 +44,7 @@ router.get('/client/:clientId', validateId, getClientProjects);
 // Update project
 router.put('/:id', validateId, validateProject, updateProject);
 router.put('/:id/state', validateId, updateState);
+router.put('/:id/completion', validateId, updateCompletion);
 router.get('/:id/history', validateId, getProjectStateHistory);
 
 // Delete project

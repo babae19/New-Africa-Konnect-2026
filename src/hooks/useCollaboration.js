@@ -341,6 +341,7 @@ export const useCollaboration = (projectId, user) => {
     }, [projectId]);
 
     return {
+        socket,
         activeTab,
         setActiveTab,
         data: { messages, files, tasks, activity, contracts, interviews, typingUsers },

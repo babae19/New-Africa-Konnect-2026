@@ -42,7 +42,8 @@ async function setupDatabase() {
             '007_profile_enhancements.sql',
             '012_profile_and_file_persistence.sql',
             '013_persist_onboarding_completion.sql',
-            '014_collaboration_contract_lifecycle.sql'
+            '014_collaboration_contract_lifecycle.sql',
+            '015_project_completion_and_deletion_consent.sql'
         ];
 
         for (const migration of migrations) {

@@ -31,7 +31,13 @@ const ensureRuntimeSchema = async () => {
     await query(`
         ALTER TABLE projects
             ADD COLUMN IF NOT EXISTS selected_expert_id UUID REFERENCES users(id) ON DELETE SET NULL,
-            ADD COLUMN IF NOT EXISTS expert_status VARCHAR(20) DEFAULT 'none'
+            ADD COLUMN IF NOT EXISTS expert_status VARCHAR(20) DEFAULT 'none',
+            ADD COLUMN IF NOT EXISTS delivery_accepted_at TIMESTAMP WITH TIME ZONE,
+            ADD COLUMN IF NOT EXISTS finalized_at TIMESTAMP WITH TIME ZONE,
+            ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMP WITH TIME ZONE,
+            ADD COLUMN IF NOT EXISTS deletion_requested_by UUID REFERENCES users(id) ON DELETE SET NULL,
+            ADD COLUMN IF NOT EXISTS deletion_consented_at TIMESTAMP WITH TIME ZONE,
+            ADD COLUMN IF NOT EXISTS deletion_consented_by UUID REFERENCES users(id) ON DELETE SET NULL
     `);
 
     await query(`

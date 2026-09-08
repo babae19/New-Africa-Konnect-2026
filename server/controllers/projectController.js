@@ -200,11 +200,60 @@ exports.deleteProject = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to delete this project' });
         }
 
+        const hasExpert = Boolean(project.selected_expert_id && project.expert_status === 'accepted');
+        if (hasExpert) {
+            if (!['completed', 'finalized'].includes(project.status) && !project.finalized_at && !project.delivery_accepted_at) {
+                return res.status(409).json({ message: 'Accept the final delivery before requesting project deletion.' });
+            }
+            if (!project.deletion_requested_at || !project.deletion_consented_at || project.deletion_consented_by !== project.selected_expert_id) {
+                return res.status(409).json({ message: 'The assigned expert must consent before this completed project can be deleted.' });
+            }
+        }
+
         await deleteProject(id);
+
+        const io = req.app.get('io');
+        if (io) io.to(`project_${id}`).emit('project_deleted', { id });
 
         res.json({ message: 'Project deleted successfully' });
     } catch (error) {
         console.error('Delete project error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.updateCompletion = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { action } = req.body;
+        const project = await getProjectById(id);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
+
+        const isClient = project.client_id === req.user.id;
+        const isExpert = project.selected_expert_id === req.user.id && project.expert_status === 'accepted';
+        if (action === 'accept_delivery' && !isClient) return res.status(403).json({ message: 'Only the client can accept final delivery.' });
+        if (action === 'request_deletion' && !isClient) return res.status(403).json({ message: 'Only the client can request deletion.' });
+        if (action === 'consent_deletion' && !isExpert) return res.status(403).json({ message: 'Only the assigned expert can consent to deletion.' });
+        if (!['accept_delivery', 'request_deletion', 'consent_deletion'].includes(action)) return res.status(400).json({ message: 'Invalid action.' });
+
+        if (action === 'request_deletion' && !project.delivery_accepted_at && !project.finalized_at && project.status !== 'completed') {
+            return res.status(409).json({ message: 'Final delivery must be accepted before requesting deletion.' });
+        }
+        if (action === 'consent_deletion' && !project.deletion_requested_at) {
+            return res.status(409).json({ message: 'The client has not requested deletion.' });
+        }
+
+        const { updateCompletionWorkflow } = require('../models/projectModel');
+        const updated = await updateCompletionWorkflow(id, action, req.user.id);
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`project_${id}`).emit('project_update', updated);
+            io.to(`user_${project.client_id}`).emit('project_update', updated);
+            if (project.selected_expert_id) io.to(`user_${project.selected_expert_id}`).emit('project_update', updated);
+        }
+        res.json(updated);
+    } catch (error) {
+        console.error('Completion workflow error:', error);
         res.status(500).json({ message: error.message });
     }
 };

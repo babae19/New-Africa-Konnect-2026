@@ -17,7 +17,8 @@ import {
     Plus, Paperclip, Send, CheckCircle2, Clock, FileText,
     Download, Play, Upload, Video, Users2, Sparkles, Mail,
     ChevronLeft, X, FileSignature, Loader2, DollarSign,
-    CheckCheck, Shield, Zap, Copy, Check, Link, Trash2
+    CheckCheck, Shield, Zap, Copy, Check, Link, Trash2,
+    ExternalLink, MonitorUp, Hand, Settings, LockKeyhole
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -567,19 +568,33 @@ const TasksTab = ({ tasks, onCreate, onUpdateStatus, project }) => {
 const VideoConferenceTab = ({ project, user, onNotify }) => {
     const [inMeeting, setInMeeting] = useState(false);
     const [copied, setCopied]       = useState(false);
+    const [joining, setJoining]     = useState(false);
+    const [meetingError, setMeetingError] = useState('');
 
     const meetingLink = `${window.location.origin}${window.location.pathname}?projectId=${project.id}&tab=video`;
 
     const handleJoin = async () => {
+        setJoining(true);
+        setMeetingError('');
         setInMeeting(true);
-        onNotify?.(`📹 I've started a secure video meeting for **${project.title}**.\n\nJoin here: ${meetingLink}`);
+        try {
+            await onNotify?.(`📹 I've started a secure video meeting for **${project.title}**.\n\nJoin here: ${meetingLink}`);
+        } catch {
+            toast.warning('Meeting opened, but the team notification could not be sent. Copy and share the link.');
+        } finally {
+            setJoining(false);
+        }
     };
 
     const handleCopy = async () => {
-        await navigator.clipboard.writeText(meetingLink);
-        setCopied(true);
-        toast.success('Meeting link copied!');
-        setTimeout(() => setCopied(false), 2000);
+        try {
+            await navigator.clipboard.writeText(meetingLink);
+            setCopied(true);
+            toast.success('Meeting link copied!');
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            toast.error('Copy was blocked by your browser. Select the link and copy it manually.');
+        }
     };
 
     if (inMeeting) {
@@ -609,8 +624,16 @@ const VideoConferenceTab = ({ project, user, onNotify }) => {
                         userData={user}
                         meetingId={project.id}
                         onLeave={() => setInMeeting(false)} 
+                        onReady={() => { setJoining(false); setMeetingError(''); }}
+                        onError={() => setMeetingError('The meeting service could not connect. Check camera permissions and your internet connection, then retry.')}
                     />
                 </div>
+                {meetingError && (
+                    <div className="bg-red-50 border-t border-red-200 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
+                        <span>{meetingError}</span>
+                        <button onClick={() => { setInMeeting(false); setMeetingError(''); }} className="font-bold underline">Retry</button>
+                    </div>
+                )}
             </div>
         );
     }
@@ -629,13 +652,25 @@ const VideoConferenceTab = ({ project, user, onNotify }) => {
 
                 <div>
                     <h2 className="text-2xl font-black text-gray-900 mb-2">Team Video Room</h2>
-                    <p className="text-gray-500 text-sm">HD video, screen sharing, and whiteboard. All powered by Jitsi — no download required.</p>
+                    <p className="text-gray-500 text-sm">A shared browser-based room for both client and expert. No account or download is required.</p>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-left">
+                    {[
+                        [Video, 'HD video'], [MonitorUp, 'Share screen'],
+                        [MessageSquare, 'Live chat'], [Hand, 'Raise hand']
+                    ].map(([Icon, label]) => (
+                        <div key={label} className="bg-white border border-gray-100 rounded-xl p-3 text-center shadow-sm">
+                            <Icon size={16} className="mx-auto mb-1 text-primary" />
+                            <span className="text-[11px] font-bold text-gray-600">{label}</span>
+                        </div>
+                    ))}
                 </div>
 
                 {/* Meeting link preview */}
                 <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-left">
                     <Link size={13} className="text-gray-400 flex-shrink-0" />
-                    <span className="text-xs text-gray-500 truncate flex-1">{meetingLink}</span>
+                    <input readOnly value={meetingLink} onFocus={e => e.target.select()} className="text-xs text-gray-500 truncate flex-1 bg-transparent outline-none" aria-label="Meeting invite link" />
                     <button onClick={handleCopy} className="text-xs font-bold text-primary hover:text-primary/80 flex-shrink-0">
                         {copied ? 'Copied!' : 'Copy'}
                     </button>
@@ -647,14 +682,60 @@ const VideoConferenceTab = ({ project, user, onNotify }) => {
                         className="w-full py-4 text-base font-bold text-white bg-primary hover:bg-primary/90 rounded-2xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.99] transition-all"
                     >
                         <Video size={18} className="inline mr-2" />
-                        Start Meeting & Notify Team
+                        {joining ? 'Opening meeting…' : 'Start Meeting & Notify Team'}
                     </button>
                     <button onClick={handleCopy}
                         className="w-full py-3 text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:border-gray-300 rounded-2xl transition-colors">
                         {copied ? <><Check size={14} className="inline mr-1.5 text-green-500" />Link copied!</> : 'Copy invite link only'}
                     </button>
+                    <button onClick={() => window.open(meetingLink, '_blank', 'noopener,noreferrer')}
+                        className="w-full py-3 text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:border-primary rounded-2xl transition-colors">
+                        <ExternalLink size={14} className="inline mr-1.5" /> Open meeting in a new tab
+                    </button>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-[11px] text-gray-400">
+                    <LockKeyhole size={13} className="text-green-500" /> Only project participants receive this room link.
                 </div>
             </div>
+        </div>
+    );
+};
+
+const CompletionPanel = ({ project, user, onProjectChange, onDeleted }) => {
+    const [busy, setBusy] = useState('');
+    const isClient = project.client_id === user?.id;
+    const isExpert = project.selected_expert_id === user?.id;
+    const completed = Boolean(project.delivery_accepted_at || project.finalized_at || project.status === 'completed');
+
+    const act = async (action, success) => {
+        setBusy(action);
+        try {
+            const updated = await api.projects.updateCompletion(project.id, action);
+            onProjectChange(updated);
+            toast.success(success);
+        } catch (error) { toast.error(error.message || 'Action could not be completed.'); }
+        finally { setBusy(''); }
+    };
+
+    const remove = async () => {
+        if (!window.confirm('Delete this completed project and its collaboration records? This cannot be undone.')) return;
+        setBusy('delete');
+        try { await api.projects.delete(project.id); toast.success('Project deleted.'); onDeleted(); }
+        catch (error) { toast.error(error.message || 'Project could not be deleted.'); setBusy(''); }
+    };
+
+    if (!isClient && !isExpert) return null;
+    return (
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+                <div><h3 className="font-bold text-gray-900 text-sm">Project completion</h3><p className="text-xs text-gray-500 mt-1">Final delivery and deletion require a clear approval trail.</p></div>
+                {completed && <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">Finalized</span>}
+            </div>
+            {isClient && !completed && <Button onClick={() => act('accept_delivery', 'Final delivery accepted.')} disabled={!!busy} className="w-full"><CheckCircle2 size={15} /> Accept final delivery</Button>}
+            {isClient && completed && !project.deletion_requested_at && <Button variant="secondary" onClick={() => act('request_deletion', 'Deletion request sent to the expert.')} disabled={!!busy} className="w-full"><Trash2 size={15} /> Request project deletion</Button>}
+            {isExpert && project.deletion_requested_at && !project.deletion_consented_at && <Button onClick={() => act('consent_deletion', 'Deletion consent recorded.')} disabled={!!busy} className="w-full"><Check size={15} /> Consent to deletion</Button>}
+            {isClient && project.deletion_requested_at && !project.deletion_consented_at && <p className="text-xs text-amber-700 bg-amber-50 rounded-xl p-3">Waiting for the assigned expert to consent.</p>}
+            {isClient && project.deletion_consented_at && <Button onClick={remove} disabled={!!busy} className="w-full bg-red-600 hover:bg-red-700"><Trash2 size={15} /> Permanently delete project</Button>}
         </div>
     );
 };
@@ -689,7 +770,7 @@ export default function Collaboration() {
 
     const tabParam     = searchParams.get('tab');
 
-    const { activeTab, setActiveTab, data, loading, actions } = useCollaboration(project?.id || projectId, user);
+    const { socket, activeTab, setActiveTab, data, loading, actions } = useCollaboration(project?.id || projectId, user);
 
     useEffect(() => {
         if (tabParam && activeTab !== tabParam) {
@@ -717,6 +798,13 @@ export default function Collaboration() {
         };
         loadProject();
     }, [user, projectId]);
+
+    useEffect(() => {
+        if (!socket) return undefined;
+        const update = updated => updated.id === project?.id && setProject(prev => ({ ...prev, ...updated }));
+        socket.on('project_update', update);
+        return () => socket.off('project_update', update);
+    }, [socket, project?.id]);
 
     if (initLoading) {
         return (
@@ -841,6 +929,7 @@ export default function Collaboration() {
                         {activeTab === 'contracts' && <ContractTab project={project} liveContract={data.contracts?.[0]} />}
                         {activeTab === 'video'     && <VideoConferenceTab project={project} user={user} onNotify={actions.sendMessage} />}
                         {activeTab === 'dm'        && <DirectMessagesPanel project={project} />}
+                        {activeTab === 'overview' && <div className="mt-6"><CompletionPanel project={project} user={user} onProjectChange={setProject} onDeleted={() => navigate(user?.role === 'expert' ? '/expert-dashboard' : '/project-hub')} /></div>}
                     </motion.div>
                 </AnimatePresence>
             </main>

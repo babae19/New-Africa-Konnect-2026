@@ -276,6 +276,11 @@ export const api = {
             method: 'DELETE',
             headers: getHeaders(),
         }),
+        updateCompletion: async (id, action) => apiRequest(`/projects/${id}/completion`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify({ action }),
+        }),
         invite: async (id, expertId) => apiRequest(`/projects/${id}/invite`, {
             method: 'POST',
             headers: getHeaders(),

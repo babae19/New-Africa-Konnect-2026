@@ -1,9 +1,19 @@
 const supabase = require('../config/supabase');
 const { v4: uuidv4 } = require('uuid');
 
+const requireStorage = (res) => {
+    if (supabase) return true;
+    res.status(503).json({
+        message: 'File storage is temporarily unavailable. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY on the server.',
+        code: 'STORAGE_NOT_CONFIGURED'
+    });
+    return false;
+};
+
 // Upload file (Generic) - Stores in 'uploads' bucket
 exports.uploadFile = async (req, res) => {
     try {
+        if (!requireStorage(res)) return;
         let { projectId, name, type, size, data } = req.body;
         let buffer, contentType;
 
@@ -82,6 +92,7 @@ exports.uploadFile = async (req, res) => {
 // Upload Image (Profile/Assets) - Returns URL directly
 exports.uploadImage = async (req, res) => {
     try {
+        if (!requireStorage(res)) return;
         const { data, name } = req.body;
         if (!data) return res.status(400).json({ message: 'No image data' });
 
@@ -166,7 +177,7 @@ exports.deleteFile = async (req, res) => {
         }
 
         // Try to delete from Supabase if it's a supabase URL
-        if (file.url && file.url.includes('supabase')) {
+        if (supabase && file.url && file.url.includes('supabase')) {
             try {
                 // Extract path from URL - URL is like .../storage/v1/object/public/uploads/path/to/file
                 const path = file.url.split('/uploads/')[1];

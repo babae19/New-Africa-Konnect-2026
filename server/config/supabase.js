@@ -2,7 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 
 // Ensure env vars are loaded
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 // Storage writes are performed by our authenticated API, not directly by a
@@ -14,6 +14,13 @@ if (!supabaseUrl || !supabaseKey) {
     console.warn('⚠️ SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing in the backend environment.');
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Storage is an optional runtime dependency. The API must still boot so health,
+// authentication, marketplace and collaboration endpoints remain available
+// when a deployment has not configured storage yet.
+const supabase = supabaseUrl && supabaseKey
+    ? createClient(supabaseUrl, supabaseKey, {
+        auth: { persistSession: false, autoRefreshToken: false }
+    })
+    : null;
 
 module.exports = supabase;

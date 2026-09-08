@@ -7,6 +7,10 @@ if (serverEnvResult.error) {
     dotenv.config({ path: path.join(__dirname, '../.env') });
 }
 
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET is required when NODE_ENV=production');
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');

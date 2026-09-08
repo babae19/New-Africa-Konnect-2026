@@ -37,7 +37,6 @@ router.post('/bid-templates', bidTemplateController.createTemplate);
 router.get('/bid-templates', bidTemplateController.getTemplates);
 router.put('/bid-templates/:id', bidTemplateController.updateTemplate);
 router.delete('/bid-templates/:id', bidTemplateController.deleteTemplate);
-router.delete('/bid-templates/:id', bidTemplateController.deleteTemplate);
 router.post('/bid-templates/:id/apply/:projectId', bidTemplateController.applyTemplate);
 
 // Availability & Scheduling Routes

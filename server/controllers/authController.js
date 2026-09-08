@@ -23,7 +23,7 @@ const { logAuth, AUDIT_ACTIONS } = require('../middleware/auditLogger');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'development-only-secret';
 const JWT_EXPIRES_IN = '30d'; // Access token expires in 30 days
 const REFRESH_TOKEN_EXPIRES_IN = '365d'; // Refresh token expires in 365 days
 
@@ -423,11 +423,20 @@ exports.revokeSessionById = async (req, res) => {
  */
 exports.revokeAllOtherSessions = async (req, res) => {
     try {
-        // Get current session ID from token
         const token = req.headers.authorization?.split(' ')[1];
-        const decoded = jwt.verify(token, JWT_SECRET);
+        if (!token) {
+            return res.status(400).json({ message: 'No token provided' });
+        }
 
-        const sessions = await revokeOtherSessions(req.user.id, decoded.sessionId);
+        // Session IDs are intentionally not embedded in JWTs. Resolve the
+        // current persisted session by its token so this action cannot revoke
+        // the session that made the request.
+        const currentSession = await findSessionByToken(token);
+        if (!currentSession || currentSession.user_id !== req.user.id) {
+            return res.status(401).json({ message: 'Current session not found' });
+        }
+
+        const sessions = await revokeOtherSessions(req.user.id, currentSession.id);
 
         res.json({
             message: 'All other sessions revoked successfully',
@@ -451,11 +460,9 @@ exports.logout = async (req, res) => {
             return res.status(400).json({ message: 'No token provided' });
         }
 
-        // Decode token to get session information
-        const decoded = jwt.verify(token, JWT_SECRET);
-
-        // Revoke all sessions for this user (or specific session if sessionId is in token)
-        await revokeOtherSessions(req.user.id, null);
+        // Logout only the session represented by this token. The explicit
+        // "revoke other sessions" action handles account-wide cleanup.
+        await revokeSessionByToken(token);
 
         // Log successful logout
         await logAuth(req, AUDIT_ACTIONS.LOGOUT, true);

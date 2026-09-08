@@ -2,6 +2,7 @@ const {
     createInterview,
     getInterviewsByProject,
     getInterviewsByUser,
+    getInterviewById,
     updateInterviewStatus
 } = require('../models/interviewModel');
 const { getProjectById } = require('../models/projectModel');
@@ -34,6 +35,7 @@ exports.scheduleInterview = async (req, res) => {
         const { findUserById } = require('../models/userModel');
         const expert = await findUserById(expertId);
         if (!expert) return res.status(404).json({ message: 'Expert not found' });
+        if (expert.role !== 'expert') return res.status(400).json({ message: 'Selected user is not an expert' });
         const start = new Date(scheduledAt);
         const calendarEvent = await createCalendarEvent({
             summary: `${project.title} — Africa Konnect Interview`, description: notes || 'Project interview arranged through Africa Konnect.',
@@ -83,8 +85,10 @@ exports.scheduleInterview = async (req, res) => {
 exports.getProjectInterviews = async (req, res) => {
     try {
         const { projectId } = req.params;
-        // Check access...
-        /* For brevity assuming authorized if viewing project */
+        const project = await getProjectById(projectId);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
+        const canView = project.client_id === req.user.id || project.selected_expert_id === req.user.id || req.user.role === 'admin';
+        if (!canView) return res.status(403).json({ message: 'Not authorized to view these interviews' });
         const interviews = await getInterviewsByProject(projectId);
         res.json({ interviews });
     } catch (error) {
@@ -107,6 +111,16 @@ exports.updateStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
+
+        if (!['scheduled', 'ongoing', 'completed', 'cancelled'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid interview status' });
+        }
+
+        const existing = await getInterviewById(id);
+        if (!existing) return res.status(404).json({ message: 'Interview not found' });
+        if (existing.client_id !== req.user.id && existing.expert_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized to update this interview' });
+        }
 
         const interview = await updateInterviewStatus(id, status);
         res.json(interview);

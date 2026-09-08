@@ -10,7 +10,10 @@ const {
 const { protect } = require('../middleware/authMiddleware');
 const { requireProjectParticipant } = require('../middleware/projectMiddleware');
 const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 20 * 1024 * 1024, files: 1 }
+});
 
 router.use(protect);
 

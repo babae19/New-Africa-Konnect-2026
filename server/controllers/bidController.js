@@ -149,6 +149,12 @@ exports.acceptBid = async (req, res) => {
         if (project.client_id !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Not authorized to accept bids for this project' });
         }
+        if (bid.project_id !== projectId) {
+            return res.status(400).json({ message: 'Bid does not belong to this project' });
+        }
+        if (bid.status !== 'pending' && bid.status !== 'shortlisted') {
+            return res.status(400).json({ message: 'Only pending or shortlisted bids can be accepted' });
+        }
 
         // Update bid status to accepted
         const acceptedBid = await updateBidStatus(bidId, 'accepted');
@@ -230,8 +236,18 @@ exports.rejectBid = async (req, res) => {
 
         // Verify project ownership
         const project = await getProjectById(projectId);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
         if (project.client_id !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Not authorized to reject bids for this project' });
+        }
+
+        const bid = await getBidById(bidId);
+        if (!bid) return res.status(404).json({ message: 'Bid not found' });
+        if (bid.project_id !== projectId) {
+            return res.status(400).json({ message: 'Bid does not belong to this project' });
+        }
+        if (bid.status !== 'pending' && bid.status !== 'shortlisted') {
+            return res.status(400).json({ message: 'Only pending or shortlisted bids can be rejected' });
         }
 
         const rejectedBid = await updateBidStatus(bidId, 'rejected');
@@ -239,7 +255,6 @@ exports.rejectBid = async (req, res) => {
         // Send notification to expert
         const io = getIO();
         if (io) {
-            const project = await getProjectById(projectId);
             emitNotification(io, rejectedBid.expert_id, NOTIFICATION_TYPES.BID_REJECTED, {
                 projectTitle: project.title
             });

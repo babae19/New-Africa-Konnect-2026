@@ -105,7 +105,7 @@ const BidSubmissionModal = ({ project, isOpen, onClose, onBidSubmitted }) => {
                 portfolioLinks
             };
 
-            await api.post(`/projects/${project.id}/bids`, bidData);
+            await api.projects.submitBid(project.id, bidData);
 
             toast.success('Bid submitted successfully!');
             onBidSubmitted();

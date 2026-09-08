@@ -31,6 +31,11 @@ const getInterviewsByProject = async (projectId) => {
     return result.rows;
 };
 
+const getInterviewById = async (id) => {
+    const result = await query('SELECT * FROM interviews WHERE id = $1', [id]);
+    return result.rows[0];
+};
+
 // Get interviews by user (expert or client)
 const getInterviewsByUser = async (userId, role) => {
     let column = role === 'client' ? 'client_id' : 'expert_id';
@@ -101,6 +106,11 @@ const getBidInterviewsByProject = async (projectId) => {
     return result.rows;
 };
 
+const getBidInterviewById = async (id) => {
+    const result = await query('SELECT * FROM project_interviews WHERE id = $1', [id]);
+    return result.rows[0];
+};
+
 // Update bid interview
 const updateBidInterview = async (id, updateData) => {
     const { scheduledTime, duration, meetingLink, status, outcome } = updateData;
@@ -125,9 +135,11 @@ const updateBidInterview = async (id, updateData) => {
 module.exports = {
     createInterview,
     getInterviewsByProject,
+    getInterviewById,
     getInterviewsByUser,
     updateInterviewStatus,
     createBidInterview,
     getBidInterviewsByProject,
+    getBidInterviewById,
     updateBidInterview
 };

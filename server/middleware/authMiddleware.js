@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const { findUserById, findSessionByToken, updateSessionActivity } = require('../models/userModel');
 const { getExpertProfile } = require('../models/expertModel');
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'development-only-secret';
 if (!JWT_SECRET) {
     console.error('FATAL ERROR: JWT_SECRET is not defined in .env');
     // In production, we should probably crash or at least log very loudly

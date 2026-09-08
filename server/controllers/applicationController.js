@@ -1,5 +1,6 @@
 const {
     createApplication,
+    getApplicationById,
     getApplicationsByProject,
     getApplicationsByExpert,
     updateApplicationStatus
@@ -97,11 +98,16 @@ exports.updateStatus = async (req, res) => {
         const { id } = req.params;
         const { status } = req.body; // 'accepted', 'shortlisted', 'rejected'
 
-        // Check ownership... requires getting app -> project -> client_id. 
-        // For speed, let's trust that we should verify ownership ideally.
-        // Assuming authorized for now or adding verification:
-
-        // TODO: Verify req.user.id owns the project associated with this application
+        if (!['accepted', 'shortlisted', 'rejected'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid application status' });
+        }
+        const existing = await getApplicationById(id);
+        if (!existing) return res.status(404).json({ message: 'Application not found' });
+        const project = await getProjectById(existing.project_id);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
+        if (project.client_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Only the project client can update applications' });
+        }
 
         const application = await updateApplicationStatus(id, status);
 

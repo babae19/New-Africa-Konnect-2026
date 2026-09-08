@@ -713,21 +713,21 @@ export const api = {
 
     // Payments
     payments: {
-        initEscrow: (projectId, amount) => apiRequest(`/payments/${projectId}/escrow`, {
+        initEscrow: (projectId, amount) => apiRequest(`/projects/${projectId}/escrow`, {
             method: 'POST',
             body: JSON.stringify({ amount }),
             headers: getHeaders(),
         }),
-        getEscrow: (projectId) => apiRequest(`/payments/${projectId}/escrow`, {
+        getEscrow: (projectId) => apiRequest(`/projects/${projectId}/escrow`, {
             headers: getHeaders(),
         }),
-        requestRelease: (projectId, data) => apiRequest(`/payments/${projectId}/release`, {
+        requestRelease: (projectId, data) => apiRequest(`/projects/${projectId}/releases`, {
             method: 'POST',
             body: JSON.stringify(data),
             headers: getHeaders(),
         }),
-        approveRelease: (projectId, releaseId) => apiRequest(`/payments/${projectId}/release/${releaseId}/approve`, {
-            method: 'POST',
+        approveRelease: (projectId, releaseId) => apiRequest(`/projects/${projectId}/releases/${releaseId}/approve`, {
+            method: 'PUT',
             headers: getHeaders(),
         })
     },

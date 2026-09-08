@@ -22,6 +22,12 @@ exports.initEscrow = async (req, res) => {
         const { projectId } = req.params;
         const { amount } = req.body; // Usually project budget
 
+        const project = await getProjectById(projectId);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
+        if (project.client_id !== req.user.id) {
+            return res.status(403).json({ message: 'Only the project client can fund escrow' });
+        }
+
         // Check if escrow already exists
         const existing = await getEscrowByProject(projectId);
         if (existing) {
@@ -31,7 +37,6 @@ exports.initEscrow = async (req, res) => {
         const escrow = await createEscrowAccount(projectId, amount);
 
         // Notify expert
-        const project = await getProjectById(projectId);
         if (project.selected_expert_id) {
             await sendNotification(project.selected_expert_id, 'payment', {
                 message: `Escrow account funded for ${project.title}`,
@@ -55,6 +60,11 @@ exports.initEscrow = async (req, res) => {
 exports.getEscrow = async (req, res) => {
     try {
         const { projectId } = req.params;
+        const project = await getProjectById(projectId);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
+        const canView = project.client_id === req.user.id || project.selected_expert_id === req.user.id || req.user.role === 'admin';
+        if (!canView) return res.status(403).json({ message: 'Not authorized to view this escrow' });
+
         const escrow = await getEscrowByProject(projectId);
 
         if (!escrow) {
@@ -79,6 +89,12 @@ exports.requestRelease = async (req, res) => {
         const { projectId } = req.params;
         const { milestoneId, amount } = req.body;
 
+        const project = await getProjectById(projectId);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
+        if (project.selected_expert_id !== req.user.id && project.client_id !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Only project participants can request a release' });
+        }
+
         const escrow = await getEscrowByProject(projectId);
         if (!escrow) {
             return res.status(404).json({ message: 'Escrow not found' });
@@ -99,7 +115,6 @@ exports.requestRelease = async (req, res) => {
         });
 
         // Notify client to approve
-        const project = await getProjectById(projectId);
         await sendNotification(project.client_id, 'payment', {
             message: `Payment release requested for ${project.title}`,
             amount: amount,
@@ -119,6 +134,7 @@ exports.approveRelease = async (req, res) => {
 
         // Verify ownership/client role
         const project = await getProjectById(projectId);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
         if (project.client_id !== req.user.id) {
             return res.status(403).json({ message: 'Only client can approve releases' });
         }

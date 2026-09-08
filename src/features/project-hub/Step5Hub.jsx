@@ -120,7 +120,7 @@ const Step5Hub = ({ onNext }) => {
             formData.append('file', file);
             formData.append('projectId', projectId);
 
-            await api.files.upload(projectId, formData);
+            await api.files.upload(formData, projectId);
             fetchFiles(); // Refresh list
         } catch (error) {
             console.error("Upload failed", error);

@@ -30,11 +30,11 @@ const BidManagement = ({ projectId: propProjectId }) => {
         setLoading(true);
         try {
             const [projectRes, bidsRes] = await Promise.all([
-                api.get(`/projects/${projectId}`),
-                api.get(`/projects/${projectId}/bids`, { params: { status: filter !== 'all' ? filter : undefined } })
+                api.projects.getById(projectId),
+                api.projects.getBids(projectId, filter !== 'all' ? { status: filter } : {})
             ]);
-            setProject(projectRes.data);
-            setBids(bidsRes.data.bids || []);
+            setProject(projectRes.project || projectRes);
+            setBids(bidsRes.bids || []);
         } catch (error) {
             console.error('Failed to fetch bids:', error);
             toast.error('Failed to load bids');
@@ -49,7 +49,7 @@ const BidManagement = ({ projectId: propProjectId }) => {
         }
 
         try {
-            await api.put(`/projects/${projectId}/bids/${bidId}/accept`);
+            await api.projects.acceptBid(projectId, bidId);
             toast.success('Bid accepted! The expert has been notified.');
             fetchProjectAndBids();
         } catch (error) {
@@ -64,7 +64,7 @@ const BidManagement = ({ projectId: propProjectId }) => {
         }
 
         try {
-            await api.put(`/projects/${projectId}/bids/${bidId}/reject`);
+            await api.projects.rejectBid(projectId, bidId);
             toast.success('Bid rejected');
             fetchProjectAndBids();
         } catch (error) {
@@ -233,7 +233,7 @@ const BidManagement = ({ projectId: propProjectId }) => {
                     </div>
                     <Button
                         className="w-full"
-                        onClick={() => window.location.href = `/collaboration/${projectId}`}
+                        onClick={() => window.location.href = `/collaboration?projectId=${projectId}`}
                     >
                         Go to Collaboration Hub
                     </Button>

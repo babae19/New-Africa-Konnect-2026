@@ -1,4 +1,4 @@
-const { createBidInterview, getBidInterviewsByProject, updateBidInterview } = require('../models/interviewModel');
+const { createBidInterview, getBidInterviewsByProject, getBidInterviewById, updateBidInterview } = require('../models/interviewModel');
 const { getBidById } = require('../models/bidModel');
 const { getProjectById } = require('../models/projectModel');
 const { NOTIFICATION_TYPES, emitNotification } = require('../utils/biddingNotifications');
@@ -13,6 +13,7 @@ const scheduleInterview = async (req, res) => {
 
         // Verify project ownership
         const project = await getProjectById(projectId);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
         if (project.client_id !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Not authorized to schedule interviews for this project' });
         }
@@ -21,6 +22,9 @@ const scheduleInterview = async (req, res) => {
         const bid = await getBidById(bidId);
         if (!bid) {
             return res.status(404).json({ message: 'Bid not found' });
+        }
+        if (bid.project_id !== projectId) {
+            return res.status(400).json({ message: 'Bid does not belong to this project' });
         }
 
         const start = new Date(scheduledTime);
@@ -91,7 +95,15 @@ const updateInterview = async (req, res) => {
         const { interviewId } = req.params;
         const { scheduledTime, duration, meetingLink, status, outcome } = req.body;
 
-        // TODO: Add authorization check
+        const existing = await getBidInterviewById(interviewId);
+        if (!existing) return res.status(404).json({ message: 'Interview not found' });
+        const project = await getProjectById(existing.project_id);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
+        const isParticipant = project.client_id === req.user.id || existing.expert_id === req.user.id || req.user.role === 'admin';
+        if (!isParticipant) return res.status(403).json({ message: 'Not authorized to update this interview' });
+        if (status && !['scheduled', 'ongoing', 'completed', 'cancelled'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid interview status' });
+        }
 
         const updatedInterview = await updateBidInterview(interviewId, {
             scheduledTime,

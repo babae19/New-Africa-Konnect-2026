@@ -6,7 +6,7 @@ const SEO = ({ title, description, keywords, image, url, type = 'website', schem
   const defaultDescription = 'Africa Konnect connects global businesses with top vetting African tech talent. Hire software engineers, data scientists, and product managers remotely.';
   const defaultKeywords = 'Hire African Developers, Remote Tech Talent Africa, Vetted Software Engineers, Outsourcing Africa, Tech Talent Marketplace, Africa Konnect';
   const siteUrl = 'https://africakonnect.com/'; // Update with production URL
-  const currentUrl = url || typeof window !== 'undefined' ? window.location.href : siteUrl;
+  const currentUrl = url || (typeof window !== 'undefined' ? window.location.href : siteUrl);
   const metaDescription = description || defaultDescription;
   const metaKeywords = keywords || defaultKeywords;
   const metaImage = image ? `${siteUrl}${image}` : `${siteUrl}/assets/og-image.jpg`; // Ensure absolute path

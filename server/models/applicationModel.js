@@ -42,6 +42,11 @@ const getApplicationsByProject = async (projectId) => {
     return result.rows;
 };
 
+const getApplicationById = async (id) => {
+    const result = await query('SELECT * FROM project_applications WHERE id = $1', [id]);
+    return result.rows[0];
+};
+
 // Get applications by expert (for Expert)
 const getApplicationsByExpert = async (expertId) => {
     const text = `
@@ -74,6 +79,7 @@ const updateApplicationStatus = async (id, status) => {
 module.exports = {
     createApplication,
     getApplicationsByProject,
+    getApplicationById,
     getApplicationsByExpert,
     updateApplicationStatus
 };

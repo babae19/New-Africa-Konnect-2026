@@ -21,7 +21,7 @@ const PrivateRoute = ({ children, roles = [], requireEmailVerification = false, 
                 // Check email verification if required
                 if (requireEmailVerification) {
                     const profileData = await api.auth.getProfile();
-                    setEmailVerified(profileData.emailVerified);
+                    setEmailVerified(profileData.emailVerified ?? profileData.email_verified ?? false);
                 }
 
                 // Check profile completeness if required (for experts)

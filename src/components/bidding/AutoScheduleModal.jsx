@@ -75,11 +75,12 @@ const AutoScheduleModal = ({ isOpen, onClose, expertId, expertName, projectId, o
         try {
             setSubmitting(true);
 
-            // This endpoint would be part of the interview controller
-            // For now, we'll simulate the API call or use the existing invite endpoint with extra data
-            await api.projects.invite(projectId, expertId, {
+            await api.interviews.schedule({
+                projectId,
+                expertId,
                 scheduledAt: selectedSlot.start.toISOString(),
-                note
+                durationMinutes: 30,
+                notes: note
             });
 
             toast.success('Interview scheduled successfully');

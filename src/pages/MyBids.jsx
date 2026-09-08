@@ -146,7 +146,7 @@ const MyBids = () => {
                     <Button
                         size="sm"
                         className="flex-1"
-                        onClick={() => window.location.href = `/collaboration/${bid.project_id}`}
+                        onClick={() => window.location.href = `/collaboration?projectId=${bid.project_id}`}
                     >
                         Go to Project
                     </Button>

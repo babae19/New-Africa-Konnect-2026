@@ -57,10 +57,12 @@ const validateRegister = [
         .isLength({ max: 255 }).withMessage('Email must not exceed 255 characters'),
     body('password')
         .notEmpty().withMessage('Password is required')
-        .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+        .isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
     body('role')
         .optional()
-        .isIn(['client', 'expert', 'admin']).withMessage('Role must be client, expert, or admin'),
+        // Administrative roles must only be assigned by a trusted internal
+        // workflow, never from a public registration request.
+        .isIn(['client', 'expert']).withMessage('Role must be client or expert'),
     validate
 ];
 

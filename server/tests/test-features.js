@@ -76,10 +76,10 @@ const runTests = async () => {
         // 2. Create Project (Project Hub)
         console.log('\n2️⃣  Project Hub: Creating Project...');
         const projectData = {
-            title: `AI Project ${randomString}`,
-            description: 'A project to test PDF upload and AI matching.',
+            title: `Marketplace Project ${randomString}`,
+            description: 'A project to test project creation and PDF upload.',
             budget: 5000,
-            techStack: ['React', 'AI'],
+            techStack: ['React', 'Node.js'],
             clientId: userId // Backend might infer this from token
         };
         const projRes = await request('POST', '/projects', projectData, authToken);
@@ -108,25 +108,6 @@ const runTests = async () => {
             console.log('✅ PDF Uploaded Successfully:', fileRes.data.id);
         } else {
             console.error('❌ PDF Upload Failed:', fileRes.data);
-        }
-
-        // 4. AI Match Test
-        console.log('\n4️⃣  AI API: Testing Match...');
-        // We'll try to match. If we don't have experts, it returns empty list, which is still a success for the endpoint logic.
-        const matchData = {
-            projectDescription: "Need a React developer for a small dashboard",
-            requirements: "React, Node.js"
-        };
-        const aiRes = await request('POST', '/ai/match', matchData, authToken);
-
-        if (aiRes.status === 200) {
-            console.log('✅ AI Match Endpoint Reachable.');
-            console.log('   Results:', aiRes.data.matches?.length || 0, 'experts found.');
-        } else if (aiRes.status === 500) {
-            console.log('⚠️  AI Endpoint returned 500 (likely missing validated key or DeepSeek error).');
-            console.log('   Details:', aiRes.data);
-        } else {
-            console.error('❌ AI Match Failed:', aiRes.status, aiRes.data);
         }
 
         console.log('\n🏁 Feature Test Complete.');

@@ -17,7 +17,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.74.0",
     "@supabase/supabase-js": "^2.95.3",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
@@ -35,7 +34,6 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^10.0.1",
     "nodemon": "^3.1.11",
-    "openai": "^6.16.0",
     "pg": "^8.11.3",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",

@@ -105,7 +105,6 @@ app.use('/api', require('./routes/paymentRoutes')); // Handling escrow, releases
 app.use('/api/files', require('./routes/fileRoutes'));
 app.use('/api/applications', require('./routes/applicationRoutes'));
 app.use('/api/interviews', require('./routes/interviewRoutes'));
-app.use('/api/ai', require('./routes/aiRoutes'));
 app.use('/api', require('./routes/bidRoutes')); // Bidding system routes
 
 

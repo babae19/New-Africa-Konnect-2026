@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, X, Check, Sparkles, Loader2 } from 'lucide-react';
+import { Upload, FileText, X, Check, Loader2 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useProject } from '../../contexts/ProjectContext';
 import { useFileUpload } from '../../hooks/useFileUpload';
-import { api } from '../../lib/api';
 import { toast } from 'sonner';
 
 const techStacks = [
@@ -33,8 +32,6 @@ const Step1Vault = ({ onNext }) => {
     const [projectDescription, setProjectDescription] = useState(currentProject?.description || '');
     const [budget, setBudget] = useState(currentProject?.budget || '');
     const [duration, setDuration] = useState(currentProject?.duration || '');
-    const [isGenerating, setIsGenerating]   = useState(false);
-    const [isAnalyzing, setIsAnalyzing]     = useState(false);
     
     // Marketplace bidding state
     const [isOpenForBidding, setIsOpenForBidding] = useState(currentProject?.open_for_bidding || false);
@@ -75,8 +72,7 @@ const Step1Vault = ({ onNext }) => {
 
     React.useEffect(() => {
         const autoSave = async () => {
-            // Only auto-save if we have at least a title and we're not currently generating/analyzing
-            if (!projectTitle || isGenerating || isAnalyzing) return;
+            if (!projectTitle) return;
             
             // Check if anything actually changed since currentProject
             const hasChanges = 
@@ -121,52 +117,6 @@ const Step1Vault = ({ onNext }) => {
         autoSave();
     }, [debouncedProjectState]);
 
-    const handleAIGenerate = async () => {
-        if (!projectTitle.trim()) {
-            toast.error("Please enter a basic project idea or title first.");
-            return;
-        }
-
-        try {
-            setIsGenerating(true);
-            const result = await api.ai.generateProject(projectTitle, projectDescription);
-
-            if (result.error) {
-                toast.error(result.error);
-            } else {
-                setProjectTitle(result.title || projectTitle);
-                setProjectDescription(result.description || projectDescription);
-                
-                // Set budgets if available
-                if (result.min_budget) setMinBudget(result.min_budget);
-                if (result.max_budget) setMaxBudget(result.max_budget);
-                
-                // If AI doesn't provide min/max, use the single estimated_budget as fallback
-                if (!result.min_budget && result.estimated_budget) {
-                    setBudget(result.estimated_budget);
-                }
-
-                setDuration(result.estimated_duration || duration);
-
-                if (result.techStack && Array.isArray(result.techStack)) {
-                    // Filter out duplicates and invalid entries
-                    const newStacks = result.techStack.filter(tech => 
-                        tech && typeof tech === 'string' && !selectedStack.includes(tech)
-                    );
-                    if (newStacks.length > 0) {
-                        setSelectedStack(prev => [...new Set([...prev, ...newStacks])]);
-                    }
-                }
-                toast.success("AI has refined your project details!");
-            }
-        } catch (error) {
-            console.error("AI Generation failed", error);
-            toast.error("Failed to generate project details.");
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
     const handleDragOver = (e) => {
         e.preventDefault();
         setIsDragging(true);
@@ -196,44 +146,9 @@ const Step1Vault = ({ onNext }) => {
                     addProjectFile(currentProject.id, result.file);
                 }
 
-                // If it's a first file or user hasn't filled much, auto-analyze
-                if (!projectDescription || projectDescription.length < 50) {
-                    await analyzeUploadedFile(result.file);
-                }
             }
         } catch (error) {
             toast.error('Error uploading file: ' + error.message);
-        }
-    };
-
-    const analyzeUploadedFile = async (fileData) => {
-        try {
-            setIsAnalyzing(true);
-            toast.loading("AI is analyzing your document...", { id: "analyzing-doc" });
-            
-            const result = await api.ai.analyzeDocument(fileData.data);
-            
-            if (result) {
-                setProjectTitle(result.title || projectTitle);
-                setProjectDescription(result.description || projectDescription);
-                if (result.min_budget) setMinBudget(result.min_budget);
-                if (result.max_budget) setMaxBudget(result.max_budget);
-                if (result.estimated_duration) setDuration(result.estimated_duration);
-                
-                if (result.techStack && Array.isArray(result.techStack)) {
-                    const newStacks = result.techStack.filter(tech => 
-                        tech && typeof tech === 'string' && !selectedStack.includes(tech)
-                    );
-                    setSelectedStack(prev => [...new Set([...prev, ...newStacks])]);
-                }
-                
-                toast.success("AI has extracted project details from your document!", { id: "analyzing-doc" });
-            }
-        } catch (error) {
-            console.error("Analysis failed", error);
-            toast.error("AI couldn't analyze the document format, but we've stored it.", { id: "analyzing-doc" });
-        } finally {
-            setIsAnalyzing(false);
         }
     };
 
@@ -309,7 +224,7 @@ const Step1Vault = ({ onNext }) => {
         <div className="max-w-3xl mx-auto">
             <div className="text-center mb-8 relative">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Let's start by understanding your needs</h2>
-                <p className="text-gray-600">Upload your project files securely. We'll analyze them to find your perfect match.</p>
+                <p className="text-gray-600">Describe your needs and upload supporting project files securely.</p>
                 
                 {/* Auto-save Indicator */}
                 <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 text-[11px] font-medium text-gray-400">
@@ -329,7 +244,7 @@ const Step1Vault = ({ onNext }) => {
 
             <Card className="p-8 mb-8">
                 <h3 className="font-semibold text-gray-900 mb-4">Project Title</h3>
-                <div className="flex gap-2 mb-6">
+                <div className="mb-6">
                     <input
                         type="text"
                         className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
@@ -337,16 +252,6 @@ const Step1Vault = ({ onNext }) => {
                         value={projectTitle}
                         onChange={(e) => setProjectTitle(e.target.value)}
                     />
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleAIGenerate}
-                        disabled={isGenerating || !projectTitle.trim()}
-                        className="flex items-center gap-2 border-primary/30 text-primary hover:bg-primary/5"
-                    >
-                        {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                        {projectDescription ? 'Refine with AI' : 'AI Help'}
-                    </Button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -380,7 +285,7 @@ const Step1Vault = ({ onNext }) => {
                 </div>
 
                 <h3 className="font-semibold text-gray-900 mb-2">Project Description</h3>
-                <p className="text-xs text-gray-500 mb-3">Provide a clear description of your goals, target audience, and key features. AI can help you refine this.</p>
+                <p className="text-xs text-gray-500 mb-3">Provide a clear description of your goals, target audience, deliverables, and key requirements.</p>
                 <div className="relative mb-8">
                     <textarea
                         className="w-full h-48 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none font-sans text-sm"
@@ -404,11 +309,11 @@ const Step1Vault = ({ onNext }) => {
                     <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-500">
                         <Upload size={24} />
                     </div>
-                    <p className="text-gray-900 font-medium mb-1">Drag & drop files here to skip manual entry</p>
+                    <p className="text-gray-900 font-medium mb-1">Drag and drop supporting files here</p>
                     <p className="text-gray-500 text-sm mb-4">PDF, DOCX, or Images (Max 10MB)</p>
                     <label>
-                        <Button variant="secondary" size="sm" disabled={uploading || isAnalyzing}>
-                            {uploading ? 'Uploading...' : isAnalyzing ? 'Analyzing...' : 'Browse Files'}
+                        <Button variant="secondary" size="sm" disabled={uploading}>
+                            {uploading ? 'Uploading...' : 'Browse Files'}
                         </Button>
                         <input
                             type="file"

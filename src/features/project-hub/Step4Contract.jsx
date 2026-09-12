@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileSignature, ShieldCheck, Download, Check, Edit2, Save, Bot } from 'lucide-react';
+import { FileSignature, ShieldCheck, Download, Check, Edit2, Save } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useProject } from '../../contexts/ProjectContext';
@@ -80,43 +80,8 @@ const Step4Contract = ({ onNext, project, hideProceed, liveContract }) => {
     const generateContract = async () => {
         if (!currentProject?.selected_expert_id) return;
         setGenerating(true);
-        const toastId = toast.loading('Initiating AI draft...');
-        setTerms(''); // Clear current terms to show generation
-
-        try {
-            const data = {
-                projectName: currentProject.title,
-                clientName: user.name,
-                expertName: currentProject.expert_name || 'Expert',
-                rate: currentProject.budget,
-                duration: currentProject.duration,
-                deliverables: currentProject.description
-            };
-
-            const result = await api.ai.draftContract(data, (chunk) => {
-                setTerms(prev => prev + chunk);
-            });
-
-            if (result.contract) {
-                setAmount(currentProject.budget || '');
-
-                const newContract = contract
-                    ? await api.contracts.update(contract.id, { terms: result.contract, amount: parseFloat(currentProject.budget || 0) })
-                    : await api.contracts.create({
-                        projectId: currentProject.id,
-                        expertId: currentProject.selected_expert_id,
-                        terms: result.contract,
-                        amount: parseFloat(currentProject.budget || 0)
-                    });
-                setContract(newContract);
-                toast.success('Contract drafted in real-time!', { id: toastId });
-            }
-        } catch (error) {
-            console.error("Failed to generate", error);
-            toast.error("AI Generation failed. Using standard template.", { id: toastId });
-
-            // Fallback template
-            const fallbackTerms = `INDEPENDENT CONTRACTOR AGREEMENT
+        const toastId = toast.loading('Creating contract template...');
+        const templateTerms = `INDEPENDENT CONTRACTOR AGREEMENT
 
 This Agreement is entered into as of ${new Date().toLocaleDateString()} between ${user.name} ("Client") and ${currentProject.expert_name || 'Expert'} ("Contractor").
 
@@ -133,24 +98,23 @@ This Agreement shall commence on ${new Date().toLocaleDateString()} and continue
 4. INDEPENDENT CONTRACTOR RELATIONSHIP
 Contractor is an independent contractor and not an employee of Client.`;
 
-            setTerms(fallbackTerms);
-            setAmount(currentProject.budget || '');
+        setTerms(templateTerms);
+        setAmount(currentProject.budget || '');
 
-            try {
-                // Create draft with fallback
-                const newContract = contract
-                    ? await api.contracts.update(contract.id, { terms: fallbackTerms, amount: parseFloat(currentProject.budget || 0) })
-                    : await api.contracts.create({
-                        projectId: currentProject.id,
-                        expertId: currentProject.selected_expert_id,
-                        terms: fallbackTerms,
-                        amount: parseFloat(currentProject.budget || 0)
-                    });
-                setContract(newContract);
-            } catch (fallbackError) {
-                console.error("Fallback creation failed", fallbackError);
-                toast.error("Could not create contract. Please try again.", { id: toastId });
-            }
+        try {
+            const newContract = contract
+                ? await api.contracts.update(contract.id, { terms: templateTerms, amount: parseFloat(currentProject.budget || 0) })
+                : await api.contracts.create({
+                    projectId: currentProject.id,
+                    expertId: currentProject.selected_expert_id,
+                    terms: templateTerms,
+                    amount: parseFloat(currentProject.budget || 0)
+                });
+            setContract(newContract);
+            toast.success('Contract template created.', { id: toastId });
+        } catch (error) {
+            console.error("Contract template creation failed", error);
+            toast.error("Could not create contract. Please try again.", { id: toastId });
         } finally {
             setGenerating(false);
         }
@@ -337,8 +301,8 @@ Contractor is an independent contractor and not an employee of Client.`;
                         {((canEdit || (!contract && user?.role === 'client')) && !isEditing) && (
                             <>
                                 <Button variant="ghost" size="sm" onClick={generateContract} disabled={generating} className="text-purple-600 hover:text-purple-700 hover:bg-purple-50">
-                                    <Bot size={16} className="mr-2" />
-                                    {generating ? 'Drafting...' : 'Generate with AI'}
+                                    <FileSignature size={16} className="mr-2" />
+                                    {generating ? 'Creating...' : 'Use Contract Template'}
                                 </Button>
                                 <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} disabled={!contract}>
                                     <Edit2 size={16} className="mr-2" />

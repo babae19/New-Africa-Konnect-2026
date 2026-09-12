@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { X, DollarSign, Clock, FileText, Link as LinkIcon, Loader2, Sparkles } from 'lucide-react';
+import { X, DollarSign, Clock, FileText, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../../lib/api';
-import { useAuth } from '../../contexts/AuthContext';
 import BidTemplateSelector from './BidTemplateSelector';
 
 const BidSubmissionModal = ({ project, isOpen, onClose, onBidSubmitted }) => {
-    const { profile } = useAuth();
     const [formData, setFormData] = useState({
         bidAmount: '',
         proposedTimeline: '',
@@ -17,34 +15,6 @@ const BidSubmissionModal = ({ project, isOpen, onClose, onBidSubmitted }) => {
         portfolioLinks: ['']
     });
     const [submitting, setSubmitting] = useState(false);
-    const [isDrafting, setIsDrafting] = useState(false);
-
-    const handleAIDraft = async () => {
-        if (!profile) {
-            toast.error("Please complete your expert profile first.");
-            return;
-        }
-
-        try {
-            setIsDrafting(true);
-            const result = await api.ai.generateProposal(project, profile);
-
-            if (result.error) {
-                toast.error(result.error);
-            } else if (result.proposal) {
-                setFormData(prev => ({
-                    ...prev,
-                    coverLetter: result.proposal
-                }));
-                toast.success("AI has drafted a proposal for you!");
-            }
-        } catch (error) {
-            console.error("AI Drafting failed", error);
-            toast.error("Failed to generate AI proposal.");
-        } finally {
-            setIsDrafting(false);
-        }
-    };
 
     if (!isOpen) return null;
 
@@ -220,21 +190,10 @@ const BidSubmissionModal = ({ project, isOpen, onClose, onBidSubmitted }) => {
 
                         {/* Cover Letter */}
                         <div>
-                            <div className="flex justify-between items-center mb-2">
+                            <div className="mb-2">
                                 <label className="block text-sm font-semibold text-gray-700">
                                     Cover Letter *
                                 </label>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleAIDraft}
-                                    disabled={isDrafting}
-                                    className="flex items-center gap-2 border-primary/30 text-primary hover:bg-primary/5 text-xs py-1 h-8"
-                                >
-                                    {isDrafting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                                    AI Draft Cover Letter
-                                </Button>
                             </div>
                             <div className="relative">
                                 <FileText className="absolute left-3 top-3 text-gray-400" size={20} />

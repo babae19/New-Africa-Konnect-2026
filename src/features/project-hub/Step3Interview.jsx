@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { Video, Calendar, Clock, CheckCircle, Video as VideoIcon, X, Loader2, Sparkles, MessageSquare } from 'lucide-react';
+import { Video, Calendar, Clock, Video as VideoIcon, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { useProject } from '../../contexts/ProjectContext';
 import { api } from '../../lib/api';
 import MeetingRoom from '../../components/common/MeetingRoom';
 import { useAuth } from '../../contexts/AuthContext';
-import { motion } from 'framer-motion';
 
 const Step3Interview = ({ onNext }) => {
     const { currentProject } = useProject();
@@ -16,11 +15,7 @@ const Step3Interview = ({ onNext }) => {
     const [scheduledTime, setScheduledTime] = useState('');
     const [isScheduling, setIsScheduling] = useState(false);
     const [interviews, setInterviews] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [activeMeeting, setActiveMeeting] = useState(null); // { roomName: string, id: string }
-    const [selectedExpert, setSelectedExpert] = useState(null);
-    const [generatedQuestions, setGeneratedQuestions] = useState('');
-    const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
     const loadInterviews = useCallback(async () => {
         if (!currentProject?.id) return;
@@ -30,42 +25,14 @@ const Step3Interview = ({ onNext }) => {
         } catch (e) {
             console.error("Failed to load interviews", e);
         } finally {
-            setLoading(false);
+            // Keep the current list visible if a refresh fails.
         }
     }, [currentProject?.id]);
 
     useEffect(() => {
         loadInterviews();
 
-        // Load selected expert profile for AI helper
-        const loadExpert = async () => {
-            if (currentProject?.selected_expert_id) {
-                try {
-                    const profileData = await api.experts.getProfile(currentProject.selected_expert_id);
-                    setSelectedExpert(profileData);
-                } catch (e) {
-                    console.error("Failed to load expert profile", e);
-                }
-            }
-        };
-        loadExpert();
     }, [loadInterviews, currentProject?.selected_expert_id]);
-
-    const handleGenerateQuestions = async () => {
-        if (!currentProject || !selectedExpert) return;
-
-        try {
-            setIsGeneratingQuestions(true);
-            const res = await api.ai.generateInterview(currentProject, selectedExpert);
-            if (res.questions) {
-                setGeneratedQuestions(res.questions);
-            }
-        } catch (e) {
-            console.error("Failed to generate questions", e);
-        } finally {
-            setIsGeneratingQuestions(false);
-        }
-    };
 
     const handleSchedule = async () => {
         if (!scheduledDate || !scheduledTime) {
@@ -162,48 +129,6 @@ const Step3Interview = ({ onNext }) => {
                 </div>
             ) : (
                 <div className="space-y-8">
-                    {/* AI Helper Section */}
-                    {currentProject?.selected_expert_id && (
-                        <Card className="p-6 bg-gradient-to-r from-primary/5 to-transparent border-primary/20">
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                        <Sparkles className="text-primary" size={20} />
-                                        AI Interview Prep
-                                    </h3>
-                                    <p className="text-sm text-gray-600">Prepare for your meeting with {selectedExpert?.name || 'the expert'} with tailored questions.</p>
-                                </div>
-                                <Button
-                                    onClick={handleGenerateQuestions}
-                                    disabled={isGeneratingQuestions || !selectedExpert}
-                                    variant="outline"
-                                    className="border-primary/50 text-primary hover:bg-primary/10"
-                                >
-                                    {isGeneratingQuestions ? <Loader2 size={16} className="animate-spin mr-2" /> : <Sparkles size={16} className="mr-2" />}
-                                    Generate Tailored Questions
-                                </Button>
-                            </div>
-
-                            {generatedQuestions && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="bg-white p-4 rounded-xl border border-primary/10 shadow-sm prose prose-sm max-w-none"
-                                >
-                                    <div className="flex justify-between items-center mb-2 border-b pb-2">
-                                        <span className="text-xs font-bold text-primary uppercase">Suggested Questions</span>
-                                        <button onClick={() => setGeneratedQuestions('')} className="text-gray-400 hover:text-gray-600">
-                                            <X size={14} />
-                                        </button>
-                                    </div>
-                                    <div className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
-                                        {generatedQuestions}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </Card>
-                    )}
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Scheduler Form */}
                         <Card className="p-6">

@@ -12,7 +12,7 @@ const tiers = [
         features: [
             "Access to Expert Directory",
             "Post 1 Project",
-            "Basic AI Matching",
+            "Expert marketplace access",
             "Standard Support",
             "5% Platform Fee"
         ],
@@ -26,7 +26,7 @@ const tiers = [
         description: "For scaling teams needing dedicated support.",
         features: [
             "Unlimited Project Posts",
-            "Priority AI Matching",
+            "Priority expert support",
             "Verified Badge Experts",
             "Dedicated Account Manager",
             "3% Platform Fee"

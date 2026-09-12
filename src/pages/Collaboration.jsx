@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import SEO from '../components/SEO';
@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard, MessageSquare, FolderOpen, CheckSquare,
     Plus, Paperclip, Send, CheckCircle2, Clock, FileText,
-    Download, Play, Upload, Video, Users2, Sparkles, Mail,
+    Download, Play, Upload, Video, Users2, Mail,
     ChevronLeft, X, FileSignature, Loader2, DollarSign,
     CheckCheck, Shield, Zap, Copy, Check, Link, Trash2,
     ExternalLink, MonitorUp, Hand, Settings, LockKeyhole
@@ -42,21 +42,9 @@ const OverviewTab = ({ project, tasks, contracts = [], onInvite }) => {
     const [inviteEmail, setInviteEmail] = useState('');
     const [showInvite, setShowInvite]   = useState(false);
     const [inviting, setInviting]       = useState(false);
-    const [aiSuggestions, setAiSuggestions]     = useState(null);
-    const [generatingRoadmap, setGeneratingRoadmap] = useState(false);
 
     const doneCount  = tasks.filter(t => t.status === 'done').length;
     const pct        = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
-
-    const handleGetRoadmap = async () => {
-        setGeneratingRoadmap(true);
-        try {
-            const res = await api.ai.collaborationHelp(project);
-            if (res.milestones || res.tasks) setAiSuggestions(res);
-            toast.success('AI roadmap generated!');
-        } catch { toast.error('Failed to generate roadmap.'); }
-        finally { setGeneratingRoadmap(false); }
-    };
 
     const handleInvite = async (e) => {
         e.preventDefault();
@@ -155,33 +143,6 @@ const OverviewTab = ({ project, tasks, contracts = [], onInvite }) => {
 
                 {/* Sidebar cards */}
                 <div className="space-y-4">
-                    {/* AI Roadmap */}
-                    <div className="bg-gradient-to-br from-violet-50 to-white border border-violet-100 rounded-2xl p-5">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                                <Sparkles size={14} className="text-violet-500" /> AI Roadmap
-                            </h3>
-                            <button
-                                onClick={handleGetRoadmap} disabled={generatingRoadmap}
-                                className="text-xs font-bold text-violet-600 hover:text-violet-800 disabled:opacity-50"
-                            >
-                                {generatingRoadmap ? <Loader2 size={12} className="animate-spin" /> : aiSuggestions ? 'Refresh' : 'Generate'}
-                            </button>
-                        </div>
-                        {aiSuggestions ? (
-                            <div className="space-y-2">
-                                {aiSuggestions.milestones?.slice(0, 3).map((m, i) => (
-                                    <div key={i} className="flex gap-2 p-2 bg-white rounded-xl border border-violet-50 text-xs">
-                                        <div className="w-4 h-4 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-bold flex-shrink-0 mt-0.5">{i + 1}</div>
-                                        <div><p className="font-bold text-gray-800">{m.title}</p><p className="text-gray-400 mt-0.5">{m.description}</p></div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-xs text-gray-400 italic">Get AI-generated milestones tailored to this project.</p>
-                        )}
-                    </div>
-
                     {/* Project Owner */}
                     <div className="bg-white border border-gray-100 rounded-2xl p-5">
                         <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2 mb-3">
@@ -467,22 +428,8 @@ const FilesTab = ({ files, onUpload }) => {
 };
 
 // ─── TASKS TAB ────────────────────────────────────────────────────────────────
-const TasksTab = ({ tasks, onCreate, onUpdateStatus, project }) => {
+const TasksTab = ({ tasks, onCreate, onUpdateStatus }) => {
     const [newTitle, setNewTitle]           = useState('');
-    const [generatingTasks, setGenerating]  = useState(false);
-
-    const handleSuggest = async () => {
-        setGenerating(true);
-        try {
-            const res = await api.ai.collaborationHelp(project);
-            if (res.tasks?.length > 0) {
-                const top = res.tasks.slice(0, 10);
-                for (const t of top) await onCreate({ title: t.title, status: 'todo' });
-                toast.success(`Added ${top.length} AI-suggested tasks!`);
-            }
-        } catch { toast.error('Failed to suggest tasks.'); }
-        finally { setGenerating(false); }
-    };
 
     const handleCreate = (e) => {
         e.preventDefault();
@@ -501,16 +448,7 @@ const TasksTab = ({ tasks, onCreate, onUpdateStatus, project }) => {
         <div className="flex flex-col h-[calc(100vh-220px)] space-y-4">
             {/* Toolbar */}
             <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex items-center gap-3">
-                    <h3 className="font-bold text-gray-900">Project Tasks</h3>
-                    <button
-                        onClick={handleSuggest} disabled={generatingTasks}
-                        className="flex items-center gap-1 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-full transition-colors disabled:opacity-60"
-                    >
-                        {generatingTasks ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                        AI Suggest
-                    </button>
-                </div>
+                <h3 className="font-bold text-gray-900">Project Tasks</h3>
                 <form onSubmit={handleCreate} className="flex gap-2 flex-1 max-w-sm">
                     <input
                         value={newTitle} onChange={e => setNewTitle(e.target.value)}

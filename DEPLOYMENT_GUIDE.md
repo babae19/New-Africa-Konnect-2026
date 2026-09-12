@@ -20,7 +20,6 @@
     - `DB_PASSWORD`: (Your Supabase DB Password)
     - `DB_PORT`: `5432`
     - `JWT_SECRET`: (Generate a secure random string)
-    - `AI_API_KEY`: (Your DeepSeek/OpenAI Key)
     - `CLIENT_URL`: `https://your-site-name.netlify.app` (You will set this AFTER Part 2)
 
 ## Part 2: Deploying Frontend (Target: Netlify)

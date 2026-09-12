@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Users, Clock, BrainCircuit, Check } from 'lucide-react';
+import { ShieldCheck, Users, Clock, SearchCheck, Check } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 
 const features = [
@@ -12,9 +12,9 @@ const features = [
         delay: 0
     },
     {
-        icon: BrainCircuit,
-        title: "AI-Powered Matching",
-        description: "Our intelligent algorithm instantly connects you with experts who match your exact stack.",
+        icon: SearchCheck,
+        title: "Skills-Based Discovery",
+        description: "Review verified experts by skills, experience, location, and project fit.",
         image: "/images/why-choose-2.jpg",
         delay: 0.1
     },

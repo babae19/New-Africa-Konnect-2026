@@ -1,7 +1,7 @@
 import React from 'react';
 import SEO from '../components/SEO';
 import { motion } from 'framer-motion';
-import { UserPlus, Database, Sparkles, Video, FileSignature, Users, DollarSign, CheckCircle } from 'lucide-react';
+import { UserPlus, Database, SearchCheck, Video, FileSignature, Users, DollarSign, CheckCircle } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Link } from 'react-router-dom';
@@ -15,12 +15,12 @@ const steps = [
     {
         icon: Database,
         title: "2. Company Vault",
-        description: "Securely upload your brand assets, technical requirements, and project documentation. Our AI analyzes this to understand your DNA."
+        description: "Securely upload your brand assets, technical requirements, and project documentation."
     },
     {
-        icon: Sparkles,
-        title: "3. AI Match Engine",
-        description: "Our proprietary algorithm scans thousands of vetted experts to find the perfect technical and cultural match for your team."
+        icon: SearchCheck,
+        title: "3. Discover Experts",
+        description: "Browse vetted experts, compare relevant experience, and shortlist the strongest candidates for your team."
     },
     {
         icon: Video,

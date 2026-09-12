@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Database, Sparkles, Video, FileSignature, LayoutDashboard, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Database, SearchCheck, Video, FileSignature, LayoutDashboard, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 
@@ -16,9 +16,9 @@ const steps = [
     },
     {
         id: '02',
-        title: "AI & Expert Match",
-        description: "Our AI instantly matches you with vetted African experts perfect for your stack.",
-        icon: Sparkles,
+        title: "Discover Experts",
+        description: "Browse vetted African experts and compare their skills, experience, and proposals.",
+        icon: SearchCheck,
         color: "text-purple-600",
         bg: "bg-purple-50",
         border: "border-purple-100"

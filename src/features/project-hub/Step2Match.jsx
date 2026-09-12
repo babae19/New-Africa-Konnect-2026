@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Sparkles, CheckCircle, MapPin, Star, Search, User, FileText, Bot, Globe, Loader2, ChevronRight } from 'lucide-react';
+import { CheckCircle, MapPin, Star, Search, User, FileText, Globe, ChevronRight } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../lib/api';
@@ -16,7 +16,6 @@ const Step2Match = ({ onNext, onInvitationSent, expertToHire }) => {
     const [selectedExperts, setSelectedExperts] = useState([]);
     const [inviting, setInviting] = useState(false);
     const [activeTab, setActiveTab] = useState('matches'); // 'matches' | 'applicants'
-    const [isMatching, setIsMatching] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -26,7 +25,7 @@ const Step2Match = ({ onNext, onInvitationSent, expertToHire }) => {
         try {
             setLoading(true);
 
-            // 1. Fetch AI Matches (All experts for now, filtered by verification)
+            // Fetch verified experts for manual review.
             const expertsData = await api.experts.getAll({ verified: 'true' });
             setExperts(expertsData.experts || []);
 
@@ -57,50 +56,6 @@ const Step2Match = ({ onNext, onInvitationSent, expertToHire }) => {
                 setSelectedExperts([expertToHire.user_id || expertToHire.id]);
             }
             setTimeout(() => setStatsLoading(false), 2000);
-        }
-    };
-
-    const runAIMatch = async () => {
-        if (!currentProject || !experts.length) return;
-        setIsMatching(true);
-        try {
-            const result = await api.ai.matchExperts(
-                {
-                    projectDescription: currentProject.description,
-                    requirements: currentProject.requirements
-                },
-                experts
-            );
-
-            if (result.matches && result.matches.length > 0) {
-                // Merge matched results with existing expert data
-                const matchedExperts = result.matches.map(match => {
-                    const fullExpert = experts.find(e => e.id === match.id);
-                    if (fullExpert) {
-                        return {
-                            ...fullExpert,
-                            reason: match.reason,
-                            score: match.score
-                        };
-                    }
-                    return null;
-                }).filter(Boolean);
-
-                if (matchedExperts.length > 0) {
-                    setExperts(matchedExperts);
-                    setActiveTab('matches');
-                    toast.success(`AI found ${matchedExperts.length} perfect matches!`);
-                } else {
-                    toast.error("AI couldn't find specific matches among the provided experts.");
-                }
-            } else {
-                throw new Error("Could not parse AI response");
-            }
-        } catch (error) {
-            console.error("AI Match failed", error);
-            toast.error("AI Match failed. Falling back to default list.");
-        } finally {
-            setIsMatching(false);
         }
     };
 
@@ -162,12 +117,9 @@ const Step2Match = ({ onNext, onInvitationSent, expertToHire }) => {
                         transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                         className="w-full h-full border-4 border-gray-200 border-t-primary rounded-full"
                     />
-                    <div className="absolute inset-0 flex items-center justify-center text-primary">
-                        <Sparkles size={32} className="animate-pulse" />
-                    </div>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Analyzing your company DNA...</h2>
-                <p className="text-gray-600">Scanning {experts.length > 0 ? experts.length : '5,000+'} vetted experts for the perfect match.</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading verified experts...</h2>
+                <p className="text-gray-600">Preparing expert profiles and project applicants.</p>
             </div>
         );
     }
@@ -200,20 +152,12 @@ const Step2Match = ({ onNext, onInvitationSent, expertToHire }) => {
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">Find your perfect expert</h2>
-                    <p className="text-gray-600">AI has analyzed your project. Here are the best matches.</p>
+                    <p className="text-gray-600">Review verified experts and select the right fit for your project.</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={handlePostToMarketplace}>
                         <Globe className="mr-2" size={16} />
                         Post to Marketplace
-                    </Button>
-                    <Button
-                        onClick={runAIMatch}
-                        disabled={isMatching}
-                        className="shadow-lg shadow-purple-500/20"
-                    >
-                        {isMatching ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />}
-                        Run AI Match
                     </Button>
                 </div>
             </div>
@@ -225,8 +169,8 @@ const Step2Match = ({ onNext, onInvitationSent, expertToHire }) => {
                         onClick={() => setActiveTab('matches')}
                         className={`px-6 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'matches' ? 'bg-primary text-white shadow' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
-                        <Sparkles size={16} />
-                        AI Matches
+                        <Search size={16} />
+                        Verified Experts
                     </button>
                     <button
                         onClick={() => setActiveTab('applicants')}
@@ -355,7 +299,7 @@ const ExpertCard = ({ expert, selected, onSelect, type, application }) => (
             <div className="bg-blue-50 p-3 rounded-lg mb-4">
                 <p className="text-xs text-blue-700 font-medium">
                     {type === 'match' ? (
-                        expert.reason ? <><Bot size={12} className="inline mr-1" /> AI Reason: {expert.reason}</> : <><Sparkles size={12} className="inline mr-1" /> Why We Matched You</>
+                        <><User size={12} className="inline mr-1" /> Expert Profile</>
                     ) : (
                         <><FileText size={12} className="inline mr-1" /> Pitch</>
                     )}

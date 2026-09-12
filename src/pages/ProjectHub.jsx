@@ -18,7 +18,7 @@ import { Step4Contract } from '../features/project-hub/Step4Contract';
 
 const steps = [
     "Company Vault",
-    "AI Match",
+    "Expert Selection",
     "Interview",
     "Contract"
 ];

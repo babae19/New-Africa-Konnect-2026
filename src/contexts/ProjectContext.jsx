@@ -217,8 +217,9 @@ export const ProjectProvider = ({ children }) => {
                 status: 'draft'
             });
 
-            setProjects([newProject, ...projects]);
+            setProjects(prev => [newProject, ...prev.filter(project => project.id !== newProject.id)]);
             setCurrentProject(newProject);
+            localStorage.setItem('currentProjectId', newProject.id);
             return newProject;
         } catch (error) {
             console.error('Error creating project:', error);
@@ -248,7 +249,7 @@ export const ProjectProvider = ({ children }) => {
     const updateProject = async (projectId, updates) => {
         try {
             // Only update core project fields via API
-            const coreFields = ['title', 'description', 'budget', 'min_budget', 'max_budget', 'status', 'open_for_bidding', 'bidding_deadline'];
+            const coreFields = ['title', 'description', 'budget', 'min_budget', 'max_budget', 'status', 'open_for_bidding', 'bidding_deadline', 'duration', 'techStack', 'required_skills', 'visibility'];
             const hasCoreUpdates = Object.keys(updates).some(k => coreFields.includes(k));
 
             if (hasCoreUpdates) {
@@ -259,12 +260,14 @@ export const ProjectProvider = ({ children }) => {
                 if (currentProject?.id === projectId) {
                     setCurrentProject(prev => ({ ...prev, ...updated }));
                 }
+                return updated;
             } else {
                 // For non-core fields (like local optimistic updates), just update state
                 setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updates } : p));
                 if (currentProject?.id === projectId) {
                     setCurrentProject(prev => ({ ...prev, ...updates }));
                 }
+                return updates;
             }
         } catch (error) {
             console.error('Error updating project:', error);

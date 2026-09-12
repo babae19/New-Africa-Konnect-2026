@@ -33,7 +33,7 @@ const getBidById = async (bidId) => {
             u.email as expert_email,
             ep.title as expert_title,
             ep.hourly_rate as expert_hourly_rate,
-            ep.rating as expert_rating,
+            NULL::numeric as expert_rating,
             ep.profile_image_url as expert_image,
             p.title as project_title
         FROM project_bids pb
@@ -55,10 +55,10 @@ const getBidsByProject = async (projectId, filters = {}) => {
             u.email as expert_email,
             ep.title as expert_title,
             ep.hourly_rate as expert_hourly_rate,
-            ep.rating as expert_rating,
+            NULL::numeric as expert_rating,
             ep.skills as expert_skills,
             ep.profile_image_url as expert_image,
-            ep.completed_projects as expert_completed_projects
+            0::integer as expert_completed_projects
         FROM project_bids pb
         JOIN users u ON pb.expert_id = u.id
         LEFT JOIN expert_profiles ep ON u.id = ep.user_id

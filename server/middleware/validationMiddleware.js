@@ -85,6 +85,7 @@ const validateLogin = [
  */
 const validateProject = [
     body('title')
+        .if((value, { req }) => req.method === 'POST' || value !== undefined)
         .trim()
         .notEmpty().withMessage('Project title is required')
         .isLength({ min: 3, max: 200 }).withMessage('Title must be between 3 and 200 characters')
@@ -100,7 +101,7 @@ const validateProject = [
         .toFloat(),
     body('status')
         .optional()
-        .isIn(['draft', 'posted', 'matched', 'contracted', 'active', 'completed', 'archived'])
+        .isIn(['draft', 'open', 'posted', 'published', 'matched', 'contracted', 'active', 'in_progress', 'completed', 'finalized', 'archived', 'cancelled'])
         .withMessage('Invalid project status'),
     body('techStack')
         .optional()

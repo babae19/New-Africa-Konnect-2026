@@ -5,8 +5,8 @@ const createProject = async (projectData) => {
     const { clientId, title, description, budget, status = 'draft', techStack, min_budget, max_budget, duration, open_for_bidding, bidding_deadline, deadline } = projectData;
 
     const text = `
-        INSERT INTO projects (client_id, title, description, budget, status, tech_stack, min_budget, max_budget, duration, open_for_bidding, bidding_deadline, deadline)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        INSERT INTO projects (client_id, title, description, budget, status, tech_stack, required_skills, min_budget, max_budget, duration, open_for_bidding, bidding_deadline, deadline)
+        VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10, $11, $12)
         RETURNING *
     `;
     const values = [clientId, title, description, budget, status, techStack, min_budget, max_budget, duration, open_for_bidding, bidding_deadline, deadline];
@@ -23,7 +23,8 @@ const getProjectById = async (id) => {
                u.email as client_email,
                e.name as selected_expert_name,
                e.email as selected_expert_email,
-               e.id as selected_expert_id
+               e.id as selected_expert_id,
+               (SELECT COUNT(*)::integer FROM project_bids pb WHERE pb.project_id = p.id AND pb.status = 'pending') AS bid_count
         FROM projects p
         JOIN users u ON p.client_id = u.id
         LEFT JOIN users e ON p.selected_expert_id = e.id
@@ -113,6 +114,7 @@ const updateProject = async (id, projectData) => {
             budget = COALESCE($3, budget),
             status = COALESCE($4, status),
             tech_stack = COALESCE($5, tech_stack),
+            required_skills = COALESCE($5, required_skills),
             min_budget = COALESCE($6, min_budget),
             max_budget = COALESCE($7, max_budget),
             open_for_bidding = COALESCE($8, open_for_bidding),
@@ -146,9 +148,12 @@ const updateCompletionWorkflow = async (projectId, action, userId) => {
         consent_deletion: `deletion_consented_at = CURRENT_TIMESTAMP, deletion_consented_by = $2`
     };
     if (!updates[action]) throw new Error('Invalid completion action');
+    // accept_delivery has no $2 placeholder; passing an unused parameter causes
+    // PostgreSQL to reject the prepared statement before updating the project.
+    const values = action === 'accept_delivery' ? [projectId] : [projectId, userId];
     const result = await query(
         `UPDATE projects SET ${updates[action]}, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
-        [projectId, userId]
+        values
     );
     return result.rows[0];
 };

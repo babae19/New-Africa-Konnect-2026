@@ -72,14 +72,20 @@ const Step1Vault = ({ onNext }) => {
 
     React.useEffect(() => {
         const autoSave = async () => {
-            if (!projectTitle) return;
+            const draft = debouncedProjectState;
+            if (!draft.title || draft.title.trim().length < 3) return;
             
             // Check if anything actually changed since currentProject
             const hasChanges = 
-                projectTitle !== currentProject?.title ||
-                projectDescription !== (currentProject?.description || '') ||
-                parseFloat(budget || 0) !== parseFloat(currentProject?.budget || 0) ||
-                selectedStack.length !== (currentProject?.techStack || currentProject?.tech_stack || []).length;
+                draft.title !== currentProject?.title ||
+                draft.description !== (currentProject?.description || '') ||
+                parseFloat(draft.budget || 0) !== parseFloat(currentProject?.budget || 0) ||
+                parseFloat(draft.minBudget || 0) !== parseFloat(currentProject?.min_budget || 0) ||
+                parseFloat(draft.maxBudget || 0) !== parseFloat(currentProject?.max_budget || 0) ||
+                draft.duration !== (currentProject?.duration || '') ||
+                draft.open_for_bidding !== Boolean(currentProject?.open_for_bidding) ||
+                draft.bidding_deadline !== (currentProject?.bidding_deadline ? new Date(currentProject.bidding_deadline).toISOString().split('T')[0] : '') ||
+                JSON.stringify(draft.techStack) !== JSON.stringify(currentProject?.techStack || currentProject?.tech_stack || []);
 
             if (!hasChanges && currentProject?.id) return;
 
@@ -88,15 +94,15 @@ const Step1Vault = ({ onNext }) => {
                 let projectId = currentProject?.id;
                 
                 const projectData = {
-                    title: projectTitle || 'Untitled Draft',
-                    techStack: selectedStack,
-                    description: projectDescription,
-                    budget: parseFloat(budget || 0),
-                    min_budget: parseFloat(minBudget || 0),
-                    max_budget: parseFloat(maxBudget || 0),
-                    duration: duration,
-                    open_for_bidding: isOpenForBidding,
-                    bidding_deadline: biddingDeadline ? new Date(biddingDeadline).toISOString() : null,
+                    title: draft.title.trim(),
+                    techStack: draft.techStack,
+                    description: draft.description,
+                    budget: parseFloat(draft.budget || 0),
+                    min_budget: parseFloat(draft.minBudget || 0),
+                    max_budget: parseFloat(draft.maxBudget || 0),
+                    duration: draft.duration,
+                    open_for_bidding: draft.open_for_bidding,
+                    bidding_deadline: draft.bidding_deadline ? new Date(draft.bidding_deadline).toISOString() : null,
                     status: 'draft'
                 };
 
@@ -173,6 +179,10 @@ const Step1Vault = ({ onNext }) => {
 
     const handleProceed = async () => {
         try {
+            if (projectTitle.trim().length < 3) {
+                toast.error('Project title must be at least 3 characters.');
+                return;
+            }
             let projectId = currentProject?.id;
 
             if (!projectId) {
@@ -215,8 +225,7 @@ const Step1Vault = ({ onNext }) => {
             onNext();
         } catch (error) {
             console.error('Error proceeding:', error);
-            // alert('Failed to save project. Please try again.'); 
-            // Don't block UI with alert for now, but log it.
+            toast.error(error.message || 'Failed to save project. Please try again.');
         }
     };
 

@@ -14,6 +14,11 @@ exports.fundEscrow = async (req, res) => {
         const { amount } = req.body;
         const clientId = req.user.id;
 
+        const fundingAmount = Number(amount);
+        if (!Number.isFinite(fundingAmount) || fundingAmount <= 0) {
+            return res.status(400).json({ message: 'A positive funding amount is required' });
+        }
+
         const project = await getProjectById(projectId);
         if (!project) {
             return res.status(404).json({ message: 'Project not found' });
@@ -39,7 +44,7 @@ exports.fundEscrow = async (req, res) => {
             senderId: clientId,
             recipientId: contract.expert_id, // Funds technically go to "Escrow", but we mark recipient as expert for clarity or use a system account. Let's use expert ID but status 'held'. 
             // Simplified: 'escrow_funding' type implies held. Recipient is the ultimate destination.
-            amount: parseFloat(amount),
+            amount: fundingAmount,
             type: 'escrow_funding',
             status: 'completed', // Mock success
             description: 'Escrow funding for project'
@@ -67,7 +72,7 @@ exports.fundEscrow = async (req, res) => {
 
         // Notify
         const io = getIO();
-        io.to(`project_${projectId}`).emit('project_update', {
+        if (io) io.to(`project_${projectId}`).emit('project_update', {
             projectId,
             type: 'funding_received',
             amount
@@ -100,6 +105,9 @@ exports.releaseFunds = async (req, res) => {
         const balance = await getProjectEscrowBalance(projectId);
         const releaseAmount = parseFloat(amount || balance); // Default to full balance if not specified
 
+        if (!Number.isFinite(releaseAmount) || releaseAmount <= 0) {
+            return res.status(400).json({ message: 'A positive release amount is required' });
+        }
         if (releaseAmount > balance) {
             return res.status(400).json({ message: 'Insufficient escrow balance' });
         }
@@ -135,7 +143,7 @@ exports.releaseFunds = async (req, res) => {
         );
 
         const io = getIO();
-        io.to(`project_${projectId}`).emit('project_update', {
+        if (io) io.to(`project_${projectId}`).emit('project_update', {
             projectId,
             type: 'funds_released',
             amount: releaseAmount

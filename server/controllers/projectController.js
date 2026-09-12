@@ -65,7 +65,8 @@ exports.getProject = async (req, res) => {
         }
 
         // Check authorization
-        if (project.client_id !== req.user.id && req.user.role !== 'admin') {
+        const isPublicMarketplaceProject = project.open_for_bidding === true && project.status === 'open';
+        if (project.client_id !== req.user.id && req.user.role !== 'admin' && !isPublicMarketplaceProject) {
             // Check if user is an expert on this project
             const { getContractsByProject } = require('../models/contractModel');
             const contracts = await getContractsByProject(id);

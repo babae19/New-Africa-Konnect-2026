@@ -492,6 +492,9 @@ exports.requestPasswordReset = async (req, res) => {
         if (!email) {
             return res.status(400).json({ message: 'Email is required' });
         }
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+            return res.status(503).json({ message: 'Password reset email is not configured. Please contact support.' });
+        }
 
         // Find user
         const user = await findUserByEmail(email);
@@ -507,7 +510,10 @@ exports.requestPasswordReset = async (req, res) => {
         const { token } = await generatePasswordResetToken(user.id);
 
         // Send reset email
-        await sendPasswordResetEmail(user, token);
+        const delivery = await sendPasswordResetEmail(user, token);
+        if (!delivery.success) {
+            return res.status(503).json({ message: 'Reset email could not be delivered. Please try again later.' });
+        }
 
         // Log password reset request
         await logAuth(req, AUDIT_ACTIONS.PASSWORD_CHANGE, true);
@@ -541,7 +547,7 @@ exports.resetPassword = async (req, res) => {
             });
         }
 
-        if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(newPassword)) {
+        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d])/.test(newPassword)) {
             return res.status(400).json({
                 message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
             });
@@ -551,7 +557,7 @@ exports.resetPassword = async (req, res) => {
         const user = await verifyPasswordResetToken(token);
 
         // Update password
-        await updatePassword(user.id, newPassword);
+        await updatePassword(user.id, newPassword, token);
 
         // Revoke all sessions for security
         await revokeOtherSessions(user.id, null);
@@ -571,6 +577,29 @@ exports.resetPassword = async (req, res) => {
         }
 
         res.status(500).json({ message: 'Failed to reset password' });
+    }
+};
+/** Change password for a signed-in client or expert. */
+exports.changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) return res.status(400).json({ message: 'Current and new passwords are required' });
+        if (newPassword.length < 8 || !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d])/.test(newPassword)) {
+            return res.status(400).json({ message: 'Use at least 8 characters, including upper and lowercase letters, a number, and a special character.' });
+        }
+        if (currentPassword === newPassword) return res.status(400).json({ message: 'Choose a different password.' });
+        const user = await findUserById(req.user.id);
+        if (!user || !await verifyPassword(currentPassword, user.password_hash)) {
+            return res.status(400).json({ message: 'Current password is incorrect.' });
+        }
+        await updatePassword(user.id, newPassword);
+        const token = req.headers.authorization?.split(' ')[1];
+        const currentSession = token ? await findSessionByToken(token) : null;
+        await revokeOtherSessions(user.id, currentSession?.id || null);
+        res.json({ message: 'Password changed successfully. Other sessions have been signed out.' });
+    } catch (error) {
+        console.error('Change password error:', error);
+        res.status(500).json({ message: 'Could not change password.' });
     }
 };
 /**

@@ -151,7 +151,7 @@ async function sendWelcomeEmail(user) {
  * Send password reset email
  */
 async function sendPasswordResetEmail(user, token) {
-    const resetUrl = `${process.env.APP_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+    const resetUrl = `${process.env.CLIENT_URL || process.env.APP_URL || 'http://localhost:5173'}/reset-password?token=${encodeURIComponent(token)}`;
 
     const mailOptions = {
         from: process.env.EMAIL_FROM || 'Africa Konnect <noreply@africakonnect.com>',
@@ -195,9 +195,6 @@ async function sendPasswordResetEmail(user, token) {
         return { success: true };
     } catch (error) {
         console.error('❌ Failed to send password reset email:', error.message);
-        console.log('\n📧 PASSWORD RESET EMAIL (Development Mode):');
-        console.log(`   To: ${user.email}`);
-        console.log(`   Link: ${resetUrl}\n`);
         return { success: false, error: error.message };
     }
 }

@@ -35,6 +35,7 @@ import PrivateRoute from './components/auth/PrivateRoute';
 import EmailVerification from './pages/EmailVerification';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import ChangePassword from './pages/ChangePassword';
 import OAuthConsent from './pages/OAuthConsent';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -55,6 +56,7 @@ function App() {
               <Route path="/verify-email" element={<EmailVerification />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/change-password" element={<PrivateRoute><ChangePassword /></PrivateRoute>} />
               <Route path="/oauth/consent" element={<OAuthConsent />} />
 
               {/* Protected Routes */}

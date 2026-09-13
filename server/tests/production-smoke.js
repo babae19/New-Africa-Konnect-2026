@@ -43,9 +43,16 @@ const userModelMock = {
         for (const session of revoked) sessions.splice(sessions.indexOf(session), 1);
         return revoked;
     },
-    updatePassword: async () => {},
-    generatePasswordResetToken: async () => ({}),
-    verifyPasswordResetToken: async () => null,
+    updatePassword: async (id, newPassword, token) => {
+        const account = [...users.values()].find(user => user.id === id);
+        if (token && token !== 'valid-reset-token') throw new Error('Invalid or expired reset token');
+        account.password_hash = newPassword;
+    },
+    generatePasswordResetToken: async () => ({ token: 'valid-reset-token' }),
+    verifyPasswordResetToken: async token => {
+        if (token !== 'valid-reset-token') throw new Error('Invalid or expired reset token');
+        return users.get('expert@example.com');
+    },
     updateUser: async () => null,
     revokeSessionByToken: async token => {
         const index = sessions.findIndex(session => session.token === token || session.refreshToken === token);
@@ -115,6 +122,26 @@ async function run() {
     assert.equal(revokeRes.statusCode, 200);
     assert.ok(sessions.some(session => session.id === current.id));
 
+    const changeBad = response();
+    await authController.changePassword({ user: users.get('client@example.com'), body: {
+        currentPassword: 'wrong', newPassword: 'NewSecure1!'
+    }, headers: { authorization: `Bearer ${current.token}` } }, changeBad);
+    assert.equal(changeBad.statusCode, 400);
+    const changeGood = response();
+    await authController.changePassword({ user: users.get('client@example.com'), body: {
+        currentPassword: 'Correct1!', newPassword: 'NewSecure1!'
+    }, headers: { authorization: `Bearer ${current.token}` } }, changeGood);
+    assert.equal(changeGood.statusCode, 200);
+    assert.ok(sessions.some(session => session.id === current.id));
+
+    const resetBad = response();
+    await authController.resetPassword({ body: { token: 'invalid', newPassword: 'ResetSecure1!' } }, resetBad);
+    assert.equal(resetBad.statusCode, 400);
+    const resetGood = response();
+    await authController.resetPassword({ body: { token: 'valid-reset-token', newPassword: 'ResetSecure1!' } }, resetGood);
+    assert.equal(resetGood.statusCode, 200);
+    assert.ok(!sessions.some(session => session.user_id === users.get('expert@example.com').id));
+
     const apiSource = fs.readFileSync(path.resolve(serverRoot, '../src/lib/api.js'), 'utf8');
     assert.match(apiSource, /`\/projects\/\$\{projectId\}\/escrow`/);
     assert.match(apiSource, /`\/projects\/\$\{projectId\}\/releases\/\$\{releaseId\}\/approve`/);
@@ -126,7 +153,7 @@ async function run() {
     assert.notEqual(firstMeeting.meetingLink, secondMeeting.meetingLink);
     assert.equal(normalizeDomain('https://video.example.com/'), 'video.example.com');
 
-    console.log('Production smoke checks passed: authentication, role guards, sessions, payment contracts, and private meeting rooms.');
+    console.log('Production smoke checks passed: authentication, password change/reset, role guards, sessions, payment contracts, and private meeting rooms.');
 }
 
 run().catch(error => {

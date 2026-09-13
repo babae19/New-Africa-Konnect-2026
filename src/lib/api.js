@@ -64,7 +64,7 @@ const apiRequest = async (endpoint, options = {}) => {
         }
     }
 
-    debugLog('REQ', options.method || 'GET', endpoint, bodyPreview);
+    debugLog('REQ', options.method || 'GET', endpoint, /password|login|register|token/i.test(endpoint) ? '[redacted]' : bodyPreview);
 
     // Automatically handle FormData headers
     if (options.body instanceof FormData) {
@@ -218,6 +218,9 @@ export const api = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, newPassword }),
+        }),
+        changePassword: async (currentPassword, newPassword) => apiRequest('/auth/change-password', {
+            method: 'POST', headers: getHeaders(), body: JSON.stringify({ currentPassword, newPassword }),
         }),
         oauthDecision: async (data) => apiRequest('/auth/oauth/decision', {
             method: 'POST',

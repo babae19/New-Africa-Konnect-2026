@@ -29,7 +29,7 @@ export default function ResetPassword() {
             setPasswordStrength('');
         } else if (password.length < 8) {
             setPasswordStrength('weak');
-        } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(password)) {
+        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d])/.test(password)) {
             setPasswordStrength('medium');
         } else {
             setPasswordStrength('strong');
@@ -52,7 +52,7 @@ export default function ResetPassword() {
             return;
         }
 
-        if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(password)) {
+        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d])/.test(password)) {
             setError('Password must contain uppercase, lowercase, number, and special character');
             return;
         }

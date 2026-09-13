@@ -13,6 +13,7 @@ const {
     logout,
     requestPasswordReset,
     resetPassword,
+    changePassword,
     updateUserProfile,
     getPublicProfile
 } = require('../controllers/authController');
@@ -34,6 +35,7 @@ router.post('/reset-password', passwordResetLimiter, resetPassword);
 // Protected routes
 router.get('/profile', protect, getProfile);
 router.put('/profile', protect, updateUserProfile);
+router.post('/change-password', protect, passwordResetLimiter, changePassword);
 router.post('/resend-verification', protect, passwordResetLimiter, resendVerification);
 router.post('/logout', protect, logout);
 

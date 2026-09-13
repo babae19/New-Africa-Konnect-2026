@@ -260,6 +260,7 @@ const Navbar = () => {
                                                     Edit Profile
                                                 </Button>
                                             </Link>
+                                            <Link to="/change-password" onClick={() => setIsOpen(false)} className="block text-sm font-medium text-primary">Change password</Link>
                                             <Button
                                                 onClick={() => {
                                                     handleLogout();
@@ -383,6 +384,7 @@ const ExpertDropdown = ({ profile, user, signOut, closeMenu }) => (
             <DropdownLink to="/my-bids" icon={ChevronRight} label="My Proposals" onClick={closeMenu} />
             <div className="my-2 border-t border-gray-100 mx-2"></div>
             <DropdownLink to="/profile" icon={User} label="My Profile" onClick={closeMenu} />
+            <DropdownLink to="/change-password" icon={Settings} label="Change Password" onClick={closeMenu} />
             <DropdownLink to={`/profile/view/${user?.id}`} icon={ChevronRight} label="View Public Profile" onClick={closeMenu} />
             <div className="my-2 border-t border-gray-100 mx-2"></div>
             <button onClick={signOut} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-xl text-red-600 hover:bg-red-50 transition-colors">
@@ -420,6 +422,7 @@ const ClientDropdown = ({ profile, user, signOut, closeMenu }) => (
             <DropdownLink to="/collaboration" icon={User} label="Collaborations" onClick={closeMenu} />
             <div className="my-2 border-t border-gray-100 mx-2"></div>
             <DropdownLink to="/profile" icon={User} label="Edit Profile" onClick={closeMenu} />
+            <DropdownLink to="/change-password" icon={Settings} label="Change Password" onClick={closeMenu} />
             <div className="my-2 border-t border-gray-100 mx-2"></div>
             <button onClick={signOut} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-xl text-red-600 hover:bg-red-50 transition-colors">
                 <span className="w-9 h-9 rounded-lg flex items-center justify-center bg-red-50"><LogOut size={18} /></span>

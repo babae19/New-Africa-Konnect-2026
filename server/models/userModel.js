@@ -260,7 +260,7 @@ const generatePasswordResetToken = async (userId) => {
         WHERE id = $3
         RETURNING id, email, name
     `;
-    const result = await query(text, [token, expires, userId]);
+    const result = await query(text, [crypto.createHash('sha256').update(token).digest('hex'), expires, userId]);
     return { user: result.rows[0], token };
 };
 
@@ -272,7 +272,7 @@ const verifyPasswordResetToken = async (token) => {
         WHERE reset_token = $1 
         AND reset_token_expires > NOW()
     `;
-    const result = await query(text, [token]);
+    const result = await query(text, [crypto.createHash('sha256').update(token).digest('hex')]);
 
     if (result.rows.length === 0) {
         throw new Error('Invalid or expired reset token');
@@ -282,7 +282,7 @@ const verifyPasswordResetToken = async (token) => {
 };
 
 // Update password
-const updatePassword = async (userId, newPassword) => {
+const updatePassword = async (userId, newPassword, resetToken = null) => {
     // Hash new password
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(newPassword, salt);
@@ -293,9 +293,12 @@ const updatePassword = async (userId, newPassword) => {
             reset_token = NULL, 
             reset_token_expires = NULL
         WHERE id = $2
+          AND ($3::text IS NULL OR (reset_token = $3 AND reset_token_expires > NOW()))
         RETURNING id
     `;
-    await query(text, [passwordHash, userId]);
+    const tokenHash = resetToken ? crypto.createHash('sha256').update(resetToken).digest('hex') : null;
+    const result = await query(text, [passwordHash, userId, tokenHash]);
+    if (!result.rows.length) throw new Error('Invalid or expired reset token');
 };
 
 module.exports = {

@@ -726,6 +726,7 @@ export default function Collaboration() {
     const [initLoading, setInitLoading] = useState(true);
 
     const tabParam     = searchParams.get('tab');
+    const directMessagesOnly = location.state?.view === 'messages' || searchParams.get('view') === 'messages';
 
     const { socket, activeTab, setActiveTab, data, loading, actions } = useCollaboration(project?.id || projectId, user);
 
@@ -738,6 +739,10 @@ export default function Collaboration() {
     useEffect(() => {
         const loadProject = async () => {
             if (!user) return;
+            if (directMessagesOnly) {
+                setInitLoading(false);
+                return;
+            }
             try {
                 if (projectId) {
                     const p = await api.projects.getById(projectId);
@@ -754,7 +759,7 @@ export default function Collaboration() {
             }
         };
         loadProject();
-    }, [user, projectId]);
+    }, [user, projectId, directMessagesOnly]);
 
     useEffect(() => {
         if (!socket) return undefined;
@@ -772,7 +777,7 @@ export default function Collaboration() {
     }
 
     // Bypass project requirement if the user just explicitly wants their Direct Messages inbox
-    if (!project && location.state?.view === 'messages') {
+    if (directMessagesOnly) {
         return (
             <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4 md:px-8">
                 <SEO title="Direct Messages – Africa Konnect" description="Your secure Direct Messaging inbox." />

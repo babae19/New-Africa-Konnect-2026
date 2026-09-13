@@ -207,7 +207,7 @@ const assignExpert = async (projectId, expertId) => {
     const text = `
         UPDATE projects
         SET selected_expert_id = $1, expert_status = 'pending'
-        WHERE id = $2
+        WHERE id = $2 AND (selected_expert_id IS NULL OR expert_status = 'rejected')
         RETURNING *
     `;
     const result = await query(text, [expertId, projectId]);

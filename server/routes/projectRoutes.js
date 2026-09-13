@@ -18,7 +18,6 @@ const { updateCompletion } = require('../controllers/projectController');
 const { getMarketplace } = require('../controllers/marketplaceController');
 const { fundEscrow, releaseFunds, getHistory } = require('../controllers/transactionController');
 const { protect, authorize } = require('../middleware/authMiddleware');
-const { checkProfileStatus } = require('../middleware/expertMiddleware');
 const { validateProject, validateId } = require('../middleware/validationMiddleware');
 const { paymentLimiter } = require('../middleware/rateLimitMiddleware');
 
@@ -54,7 +53,7 @@ router.delete('/:id', validateId, deleteProject);
 router.post('/:id/invite', validateId, authorize('client'), inviteExpert);
 
 // Respond to invite (experts only)
-router.put('/:id/invite', validateId, authorize('expert'), checkProfileStatus, respondToInvite);
+router.put('/:id/invite', validateId, authorize('expert'), respondToInvite);
 
 // Escrow & Payments
 router.post('/:id/fund', validateId, authorize('client'), paymentLimiter, fundEscrow);

@@ -72,17 +72,17 @@ exports.getProject = async (req, res) => {
         const isPublicMarketplaceProject = project.open_for_bidding === true && project.status === 'open';
         if (project.client_id !== req.user.id && req.user.role !== 'admin' && !isPublicMarketplaceProject) {
             // Check if user is an expert on this project
-            const { getContractsByProject } = require('../models/contractModel');
-            const contracts = await getContractsByProject(id);
-            const isExpert = contracts.some(c => c.expert_id === req.user.id);
-            const isInvited = project.selected_expert_id === req.user.id && project.expert_status === 'accepted';
+            const isInvited = project.selected_expert_id === req.user.id && ['pending', 'accepted'].includes(project.expert_status);
 
-            if (!isExpert && !isInvited) {
+            if (!isInvited) {
+                const { getContractsByProject } = require('../models/contractModel');
+                const contracts = await getContractsByProject(id);
+                const isExpert = contracts.some(c => c.expert_id === req.user.id);
                 // Check if project member
                 const { isMember } = require('../models/projectModel');
                 const isProjectMember = await isMember(id, req.user.id);
 
-                if (!isProjectMember) {
+                if (!isProjectMember && !isExpert) {
                     return res.status(403).json({ message: 'Not authorized to view this project' });
                 }
             }
@@ -284,6 +284,23 @@ exports.inviteExpert = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to invite experts to this project' });
         }
 
+        if (!expertId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(expertId)) {
+            return res.status(400).json({ message: 'Select a valid expert' });
+        }
+        const { findUserById } = require('../models/userModel');
+        const expert = await findUserById(expertId);
+        if (!expert || expert.role !== 'expert') return res.status(404).json({ message: 'Expert not found' });
+        if (['completed', 'finalized', 'cancelled'].includes(project.status) || project.expert_status === 'accepted') {
+            return res.status(409).json({ message: 'This project is no longer available for invitations' });
+        }
+        if (project.expert_status === 'pending') {
+            return res.status(409).json({ message: 'This project already has a pending expert invitation' });
+        }
+
+        const { assignExpert } = require('../models/projectModel');
+        const updatedProject = await assignExpert(id, expertId);
+        if (!updatedProject) return res.status(409).json({ message: 'The project invitation changed. Refresh and try again.' });
+
         // Create Notification for Expert
         const { sendNotification } = require('../services/notificationService');
         await sendNotification(
@@ -291,19 +308,16 @@ exports.inviteExpert = async (req, res) => {
             'project_invite',
             {
                 projectTitle: project.title,
-                actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/project-hub`
+                projectId: id,
+                actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/expert-dashboard`
             },
             req.app.get('io')
-        );
-
-        // Assign expert in DB
-        const { assignExpert } = require('../models/projectModel');
-        const updatedProject = await assignExpert(id, expertId);
+        ).catch(error => console.error('Unable to deliver expert invitation notification:', error));
 
         // Notify expert via Socket.IO (handled by service for notification, but project_invite event is specific)
         const io = req.app.get('io');
         if (io) {
-            io.to(`user_${expertId}`).emit('project_invite', updatedProject);
+            io.to(`user_${expertId}`).emit('project_invite', { ...updatedProject, client_name: project.client_name });
             io.to(`project_${id}`).emit('project_update', updatedProject);
         }
 
@@ -357,10 +371,10 @@ exports.respondToInvite = async (req, res) => {
             {
                 projectTitle: project.title,
                 senderName: req.user.name,
-                actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/projects/${id}`
+                actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/project-hub`
             },
             req.app.get('io')
-        );
+        ).catch(error => console.error('Unable to deliver project response notification:', error));
 
         if (status === 'accepted') {
             // Auto-create contract placeholder

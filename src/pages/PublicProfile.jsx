@@ -47,33 +47,19 @@ const PublicProfile = () => {
         }
 
         setHiring(true);
-        try {
-            // Send an automated DM directly to the expert notifying them of a potential hire
-            await api.messages.sendDirect(
-                profile.id,
-                `Hi ${profile.name}, I am interested in hiring you for a potential engagement! Let's discuss requirements.`
-            );
-            
-            toast.success('Engagement initiated! Expert has been notified via Direct Message.');
-            // Route client straight to project hub wizard to start creating the project spec
-            navigate('/project-hub', { state: { expertToHire: { ...profile, user_id: profile.id, hourly_rate: profile.hourlyRate }, view: 'wizard', step: 1 } });
-        } catch (error) {
-            console.error("Failed to initiate hire:", error);
-            toast.error("Failed to start engagement. Please try again.");
-        } finally {
-            setHiring(false);
-        }
+        // The invitation is sent after the client saves the project and confirms the expert in Project Hub.
+        navigate('/project-hub', { state: { expertToHire: { ...profile, user_id: profile.id, hourly_rate: profile.hourlyRate }, view: 'wizard', step: 1 } });
     };
 
     const handleMessage = async () => {
         if (!currentUser) { 
-            toast.error('Please log in to message experts');
+            toast.error('Please log in to send a message');
             navigate('/signin'); 
             return;
         }
 
-        if (currentUser.role !== 'client') {
-            toast.error('Only clients can message experts');
+        if (!((currentUser.role === 'client' && profile.role === 'expert') || (currentUser.role === 'expert' && profile.role === 'client'))) {
+            toast.error('Direct messaging is available between clients and experts');
             return;
         }
 
@@ -191,12 +177,12 @@ const PublicProfile = () => {
                                     <Button className="w-full" onClick={() => navigate('/profile')}>
                                         Edit Profile
                                     </Button>
-                                ) : isExpert && (
+                                ) : (isExpert || profile.role === 'client') && (
                                     <div className="space-y-3">
-                                        <Button className="w-full shadow-lg shadow-primary/20" onClick={handleHire} disabled={hiring}>
+                                        {isExpert && <Button className="w-full shadow-lg shadow-primary/20" onClick={handleHire} disabled={hiring}>
                                             <Briefcase size={18} className="mr-2" />
-                                            {hiring ? "Processing..." : "Hire Now"}
-                                        </Button>
+                                            {hiring ? "Opening..." : "Set Up Project"}
+                                        </Button>}
                                         <Button variant="outline" className="w-full" onClick={handleMessage} disabled={messaging}>
                                             <MessageSquare size={18} className="mr-2" />
                                             {messaging ? "Starting Chat..." : "Message"}

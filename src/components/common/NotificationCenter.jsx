@@ -80,6 +80,8 @@ const NotificationCenter = () => {
 
         const handleNotification = (data) => {
             fetchNotifications();
+            // Direct-message events already show a contextual Reply action below.
+            if (data.type === 'message_received') return;
 
             if (data.type === 'project_match') {
                 toast.success('New Project Match!', {
@@ -103,11 +105,19 @@ const NotificationCenter = () => {
         socket.on('project_invite', handleRefresh);
         socket.on('project_update', handleRefresh);
         socket.on('notification', handleNotification);
+        const handleDM = data => {
+            toast.info('New direct message', {
+                description: `${data.sender?.name || 'A contact'} sent you a message`,
+                action: { label: 'Reply', onClick: () => window.location.assign('/collaboration?view=messages') }
+            });
+        };
+        socket.on('new_direct_message', handleDM);
 
         return () => {
             socket.off('project_invite', handleRefresh);
             socket.off('project_update', handleRefresh);
             socket.off('notification', handleNotification);
+            socket.off('new_direct_message', handleDM);
         };
     }, [socket, user]);
 

@@ -382,6 +382,7 @@ const ExpertDropdown = ({ profile, user, signOut, closeMenu }) => (
             <DropdownLink to="/expert-dashboard" icon={Settings} label="Dashboard" onClick={closeMenu} />
             <DropdownLink to="/marketplace" icon={User} label="Browse Projects" onClick={closeMenu} />
             <DropdownLink to="/my-bids" icon={ChevronRight} label="My Proposals" onClick={closeMenu} />
+            <DropdownLink to="/collaboration?view=messages" icon={User} label="Direct Messages" onClick={closeMenu} />
             <div className="my-2 border-t border-gray-100 mx-2"></div>
             <DropdownLink to="/profile" icon={User} label="My Profile" onClick={closeMenu} />
             <DropdownLink to="/change-password" icon={Settings} label="Change Password" onClick={closeMenu} />
@@ -420,6 +421,7 @@ const ClientDropdown = ({ profile, user, signOut, closeMenu }) => (
             <DropdownLink to="/project-hub" icon={Settings} label="Project Hub" onClick={closeMenu} />
             <DropdownLink to="/marketplace" icon={User} label="Browse Projects" onClick={closeMenu} />
             <DropdownLink to="/collaboration" icon={User} label="Collaborations" onClick={closeMenu} />
+            <DropdownLink to="/collaboration?view=messages" icon={User} label="Direct Messages" onClick={closeMenu} />
             <div className="my-2 border-t border-gray-100 mx-2"></div>
             <DropdownLink to="/profile" icon={User} label="Edit Profile" onClick={closeMenu} />
             <DropdownLink to="/change-password" icon={Settings} label="Change Password" onClick={closeMenu} />

@@ -91,6 +91,8 @@ class SocketClient {
             });
 
             this.socket.on('connect', () => {
+                const currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}');
+                if (currentUser.id) this.socket.emit('join_user', currentUser.id);
                 if (import.meta.env.DEV) {
                     console.log('Socket connected:', this.socket.id);
                 }

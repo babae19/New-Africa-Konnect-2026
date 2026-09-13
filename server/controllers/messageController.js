@@ -11,6 +11,7 @@ const {
     deleteMessage
 } = require('../models/messageModel');
 const { getProjectById, isMember } = require('../models/projectModel');
+const { findUserById } = require('../models/userModel');
 
 const canAccessProject = async (project, user) => {
     if (!project) return false;
@@ -42,6 +43,14 @@ exports.sendMessage = async (req, res) => {
             }
         } else if (!receiverId) {
             return res.status(400).json({ message: 'Either Project ID or Receiver ID is required' });
+        } else {
+            if (receiverId === senderId) return res.status(400).json({ message: 'You cannot message yourself' });
+            const recipient = await findUserById(receiverId);
+            if (!recipient) return res.status(404).json({ message: 'Recipient not found' });
+            if (!((req.user.role === 'client' && recipient.role === 'expert') ||
+                  (req.user.role === 'expert' && recipient.role === 'client'))) {
+                return res.status(403).json({ message: 'Direct messages are for clients and experts' });
+            }
         }
 
         const message = await createMessage({
@@ -50,6 +59,15 @@ exports.sendMessage = async (req, res) => {
             receiverId,
             content
         });
+
+        if (!projectId && receiverId) {
+            const { sendNotification } = require('../services/notificationService');
+            sendNotification(receiverId, 'message_received', {
+                senderName: req.user.name,
+                senderId,
+                actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/collaboration?view=messages`
+            }, req.app.get('io')).catch(error => console.error('Direct message notification failed:', error));
+        }
 
         const io = req.app.get('io');
         if (io) {

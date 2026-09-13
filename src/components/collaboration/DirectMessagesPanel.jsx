@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../hooks/useSocket';
 import { Avatar } from '../ui/Avatar';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Paperclip, Search, MessageSquare, ArrowLeft, Check, CheckCheck, Loader2 } from 'lucide-react';
+import { Send, Search, MessageSquare, ArrowLeft, Check, CheckCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ── Single conversation thread ─────────────────────────────────────────────
@@ -16,7 +16,6 @@ const DMThread = ({ contact, onBack, currentUser, socket }) => {
     const [typing, setTyping]       = useState(false);
     const scrollRef                 = useRef(null);
     const typingTimer               = useRef(null);
-    const fileInputRef              = useRef(null);
 
     const scrollToBottom = useCallback(() => {
         setTimeout(() => {
@@ -95,11 +94,14 @@ const DMThread = ({ contact, onBack, currentUser, socket }) => {
 
         try {
             const res = await api.messages.sendDirect(contact.id, text);
-            setMessages(prev => prev.map(m => m.id === tempId ? res : m));
+            setMessages(prev => prev.some(m => m.id === res.id)
+                ? prev.filter(m => m.id !== tempId)
+                : prev.map(m => m.id === tempId ? res : m));
         } catch (err) {
             console.error('DM send failed:', err);
             setMessages(prev => prev.filter(m => m.id !== tempId));
-            toast.error('Failed to send message.');
+            setInput(text);
+            toast.error(err.message || 'Failed to send message.');
         } finally {
             setSending(false);
         }
@@ -183,19 +185,10 @@ const DMThread = ({ contact, onBack, currentUser, socket }) => {
             {/* Input */}
             <form onSubmit={handleSend} className="px-4 py-3 bg-white border-t border-gray-100 flex-shrink-0">
                 <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full border-2 border-gray-200 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/5 transition-all">
-                    <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="text-gray-400 hover:text-primary transition-colors flex-shrink-0"
-                    >
-                        <Paperclip size={16} />
-                    </button>
-                    <input ref={fileInputRef} type="file" className="hidden" />
                     <input
                         type="text"
                         value={input}
                         onChange={e => { setInput(e.target.value); sendTypingEvent(); }}
-                        onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend(e)}
                         placeholder={`Message ${contact.name}…`}
                         className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-gray-800 placeholder:text-gray-300 py-1"
                         disabled={sending}
@@ -269,7 +262,11 @@ const DirectMessagesPanel = ({ project, defaultContact }) => {
                 } else {
                     // Load all general direct message contacts
                     const data = await api.messages.getDirectChatUsers();
-                    if (!cancelled) setContacts(Array.isArray(data) ? data : []);
+                    if (!cancelled) {
+                        const list = Array.isArray(data) ? data : [];
+                        const direct = defaultContact && { ...defaultContact, id: defaultContact.user_id || defaultContact.id };
+                        setContacts(direct && !list.some(item => item.id === direct.id) ? [direct, ...list] : list);
+                    }
                 }
             } catch (err) {
                 console.error('Failed to load DM contacts:', err);
@@ -280,11 +277,30 @@ const DirectMessagesPanel = ({ project, defaultContact }) => {
         };
         loadContacts();
         return () => { cancelled = true; };
-    }, [project, user.id]);
+    }, [project, user.id, defaultContact]);
 
     useEffect(() => {
-        if (defaultContact) setSelected(defaultContact);
+        if (defaultContact) {
+            const contact = { ...defaultContact, id: defaultContact.user_id || defaultContact.id };
+            setSelected(contact);
+            setContacts(prev => prev.some(item => item.id === contact.id) ? prev : [contact, ...prev]);
+        }
     }, [defaultContact]);
+
+    useEffect(() => {
+        if (project || !socket) return undefined;
+        const refresh = async msg => {
+            if (msg.sender_id !== user.id && msg.receiver_id !== user.id) return;
+            try {
+                const data = await api.messages.getDirectChatUsers();
+                setContacts(Array.isArray(data) ? data : []);
+            } catch (error) {
+                console.error('Could not refresh conversations', error);
+            }
+        };
+        socket.on('direct_message', refresh);
+        return () => socket.off('direct_message', refresh);
+    }, [socket, project, user.id]);
 
     const filtered = contacts.filter(c => c.name?.toLowerCase().includes(search.toLowerCase()));
 

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "node verify-handlers.js && node tests/production-smoke.js"
+    "test": "node verify-handlers.js && node tests/production-smoke.js && node tests/communication-smoke.js"
   },
   "keywords": [
     "africa",

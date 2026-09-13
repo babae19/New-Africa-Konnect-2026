@@ -29,6 +29,8 @@ export default function ExpertDashboard() {
     const [openProjects, setOpenProjects] = useState([]); // Marketplace
     const [loading, setLoading] = useState(true);
     const [showProfileSetup, setShowProfileSetup] = useState(false);
+    const [expandedInviteId, setExpandedInviteId] = useState(null);
+    const [respondingInviteId, setRespondingInviteId] = useState(null);
 
     const [isEditingProfile, setIsEditingProfile] = useState(false);
 
@@ -48,7 +50,7 @@ export default function ExpertDashboard() {
                 const profileData = await api.experts.getProfile(user.id).catch(() => null);
                 setProfile(profileData);
 
-                if (!profileData || !profileData.is_complete) {
+                if (!profileData) {
                     setShowProfileSetup(true);
                 }
 
@@ -85,13 +87,27 @@ export default function ExpertDashboard() {
         socket.emit('join_user', user.id);
 
         const handleInvite = (newInvite) => {
-            setInvitations(prev => [newInvite, ...prev]);
+            setInvitations(prev => [newInvite, ...prev.filter(inv => inv.id !== newInvite.id)]);
+        };
+        const refreshInvites = async () => {
+            try {
+                const response = await api.projects.getInvitedProjects();
+                const projects = response.projects || [];
+                setInvitations(projects.filter(p => p.expert_status === 'pending'));
+                setActiveProjects(projects.filter(p => p.expert_status === 'accepted' || p.status === 'active'));
+            } catch (error) {
+                console.error('Failed to refresh expert invitations', error);
+            }
         };
 
         socket.on('project_invite', handleInvite);
+        socket.on('connect', refreshInvites);
+        window.addEventListener('focus', refreshInvites);
 
         return () => {
             socket.off('project_invite', handleInvite);
+            socket.off('connect', refreshInvites);
+            window.removeEventListener('focus', refreshInvites);
         }
     }, [socket, user]);
 
@@ -105,6 +121,7 @@ export default function ExpertDashboard() {
     };
 
     const handleAcceptInvite = async (invite) => {
+        setRespondingInviteId(invite.id);
         try {
             const acceptedProject = await api.projects.respondToInvite(invite.project_id || invite.id, 'accepted');
             setInvitations(prev => prev.filter(i => i.id !== invite.id));
@@ -113,10 +130,13 @@ export default function ExpertDashboard() {
         } catch (error) {
             console.error("Failed to accept invite", error);
             toast.error(error.message || 'Unable to accept this project');
+        } finally {
+            setRespondingInviteId(null);
         }
     };
 
     const handleDeclineInvite = async (invite) => {
+        setRespondingInviteId(invite.id);
         try {
             await api.projects.respondToInvite(invite.project_id || invite.id, 'rejected');
             setInvitations(prev => prev.filter(i => i.id !== invite.id));
@@ -124,6 +144,8 @@ export default function ExpertDashboard() {
         } catch (error) {
             console.error("Failed to decline invite", error);
             toast.error(error.message || 'Unable to decline this project');
+        } finally {
+            setRespondingInviteId(null);
         }
     };
 
@@ -312,7 +334,7 @@ export default function ExpertDashboard() {
                                                 </div>
                                             </div>
                                             <div className="ml-4 flex flex-col items-end gap-2">
-                                                <Button size="sm">Apply Now</Button>
+                                                <Button size="sm" onClick={() => navigate(`/marketplace/projects/${p.id}`)}>View &amp; Apply</Button>
                                                 <span className="text-xs text-gray-400">Posted {new Date(p.created_at).toLocaleDateString()}</span>
                                             </div>
                                         </div>
@@ -338,11 +360,20 @@ export default function ExpertDashboard() {
                                 <div className="space-y-3">
                                     {invitations.map(inv => (
                                         <Card key={inv.id} className="p-4 border-l-4 border-l-primary cursor-pointer">
-                                            <h4 className="font-bold text-sm text-gray-900 mb-1" onClick={() => navigate('/collaboration', { state: { projectId: inv.project_id } })}>{inv.project_title}</h4>
-                                            <p className="text-xs text-gray-500 mb-3">You've been invited to apply.</p>
-                                            <div className="flex gap-2">
-                                                <Button size="sm" className="w-full text-xs" onClick={() => handleAcceptInvite(inv)}>Accept</Button>
-                                                <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => handleDeclineInvite(inv)}>Decline</Button>
+                                            <h4 className="font-bold text-sm text-gray-900 mb-1">{inv.title}</h4>
+                                            <p className="text-xs text-gray-500 mb-3">Invitation from {inv.client_name || 'a client'}</p>
+                                            {expandedInviteId === inv.id && (
+                                                <div className="mb-3 space-y-2 text-sm text-gray-600">
+                                                    <p className="whitespace-pre-wrap">{inv.description || 'No project description provided.'}</p>
+                                                    <p>Budget: {inv.budget != null ? `$${Number(inv.budget).toLocaleString()}` : 'To be agreed'}</p>
+                                                    <p>Duration: {inv.duration ? `${inv.duration} days` : 'To be agreed'}</p>
+                                                </div>
+                                            )}
+                                            <div className="flex flex-wrap gap-2">
+                                                <Button size="sm" variant="outline" onClick={() => setExpandedInviteId(expandedInviteId === inv.id ? null : inv.id)}>{expandedInviteId === inv.id ? 'Hide' : 'View'}</Button>
+                                                <Button size="sm" variant="outline" onClick={() => navigate('/collaboration', { state: { view: 'messages', defaultContact: { id: inv.client_id, name: inv.client_name || 'Project Client', role: 'client' } } })}>Message Client</Button>
+                                                <Button size="sm" disabled={respondingInviteId === inv.id} onClick={() => handleAcceptInvite(inv)}>Accept</Button>
+                                                <Button size="sm" disabled={respondingInviteId === inv.id} variant="outline" onClick={() => handleDeclineInvite(inv)}>Reject</Button>
                                             </div>
                                         </Card>
                                     ))}

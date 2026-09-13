@@ -68,6 +68,7 @@ require.cache[auditLoggerPath] = { id: auditLoggerPath, filename: auditLoggerPat
 
 const authController = require(path.join(serverRoot, 'controllers/authController'));
 const { authorize } = require(path.join(serverRoot, 'middleware/authMiddleware'));
+const { createMeetingRoom, normalizeDomain } = require(path.join(serverRoot, 'services/meetingService'));
 
 const response = () => ({
     statusCode: 200,
@@ -119,7 +120,13 @@ async function run() {
     assert.match(apiSource, /`\/projects\/\$\{projectId\}\/releases\/\$\{releaseId\}\/approve`/);
     assert.match(apiSource, /approveRelease:[\s\S]*?method: 'PUT'/);
 
-    console.log('Production smoke checks passed: client login, expert login, role guards, session retention, and payment API contracts.');
+    const firstMeeting = createMeetingRoom({ projectId: 'project-123', purpose: 'interview' });
+    const secondMeeting = createMeetingRoom({ projectId: 'project-123', purpose: 'interview' });
+    assert.match(firstMeeting.meetingLink, /^https:\/\/meet\.jit\.si\/AfricaKonnect-interview-project123-[a-f0-9]{36}$/);
+    assert.notEqual(firstMeeting.meetingLink, secondMeeting.meetingLink);
+    assert.equal(normalizeDomain('https://video.example.com/'), 'video.example.com');
+
+    console.log('Production smoke checks passed: authentication, role guards, sessions, payment contracts, and private meeting rooms.');
 }
 
 run().catch(error => {

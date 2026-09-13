@@ -6,7 +6,7 @@ const {
     updateInterviewStatus
 } = require('../models/interviewModel');
 const { getProjectById } = require('../models/projectModel');
-const { createCalendarEvent } = require('../services/calendarService');
+const { createMeetingRoom } = require('../services/meetingService');
 
 // Schedule an interview
 exports.scheduleInterview = async (req, res) => {
@@ -37,12 +37,9 @@ exports.scheduleInterview = async (req, res) => {
         if (!expert) return res.status(404).json({ message: 'Expert not found' });
         if (expert.role !== 'expert') return res.status(400).json({ message: 'Selected user is not an expert' });
         const start = new Date(scheduledAt);
-        const calendarEvent = await createCalendarEvent({
-            summary: `${project.title} — Africa Konnect Interview`, description: notes || 'Project interview arranged through Africa Konnect.',
-            startTime: start, endTime: new Date(start.getTime() + durationMinutes * 60000),
-            attendees: [project.client_email, expert.email]
-        });
-        const meetingLink = calendarEvent.meetingLink;
+        if (Number.isNaN(start.getTime()) || start <= new Date()) return res.status(400).json({ message: 'Meeting time must be in the future' });
+        const meeting = createMeetingRoom({ projectId, purpose: 'interview' });
+        const meetingLink = meeting.meetingLink;
 
         const interview = await createInterview({
             projectId,
@@ -77,7 +74,7 @@ exports.scheduleInterview = async (req, res) => {
         res.status(201).json(interview);
     } catch (error) {
         console.error('Schedule error:', error);
-        res.status(error.code === 'GOOGLE_MEET_NOT_CONFIGURED' ? 503 : 500).json({ message: error.message, code: error.code });
+        res.status(500).json({ message: error.message, code: error.code });
     }
 };
 

@@ -1,6 +1,5 @@
 const { query } = require('../database/db');
 const notificationPreferenceModel = require('../models/notificationPreferenceModel');
-const { createCalendarEvent } = require('./calendarService'); // Using this for sending invites if needed? No, separate.
 
 /**
  * Service to match new projects with experts based on skills and preferences

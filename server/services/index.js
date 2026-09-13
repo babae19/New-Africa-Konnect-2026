@@ -2,5 +2,5 @@ module.exports = {
     projectMatchingService: require('./projectMatchingService'),
     notificationService: require('./notificationService'),
     paymentGatewayService: require('./paymentGatewayService'),
-    calendarService: require('./calendarService')
+    meetingService: require('./meetingService')
 };

@@ -42,7 +42,11 @@ const Step3Interview = ({ onNext }) => {
 
         try {
             setIsScheduling(true);
-            const scheduledAt = new Date(`${scheduledDate}T${scheduledTime} `);
+            const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}`);
+            if (Number.isNaN(scheduledAt.getTime()) || scheduledAt <= new Date()) {
+                toast.error('Please choose a valid future date and time.');
+                return;
+            }
 
             // Assuming currentProject.selected_expert_id (the shortlisted one)
             // If no expert selected yet (rare in this flow), warn user
@@ -51,16 +55,12 @@ const Step3Interview = ({ onNext }) => {
                 return;
             }
 
-            // Create a unique room name
-            const roomName = `AK-Interview-${currentProject.id}-${Date.now()}`;
-
             await api.interviews.schedule({
                 projectId: currentProject.id,
                 expertId: currentProject.selected_expert_id,
                 scheduledAt: scheduledAt.toISOString(),
                 durationMinutes: 45,
-                notes: "Initial screening",
-                meetingLink: roomName // Storing room name as the link for internal logic
+                notes: "Initial screening"
             });
 
             toast.success("Interview Invitation Sent! The expert will be notified.");
@@ -74,25 +74,9 @@ const Step3Interview = ({ onNext }) => {
     };
 
     const handleJoinMeeting = (interview) => {
-        if (interview.meeting_link?.startsWith('https://meet.google.com/')) {
-            window.open(interview.meeting_link, '_blank', 'noopener,noreferrer');
-            return;
-        }
-        // If meeting_link is a full URL (legacy), extract room name or just use it. 
-        // For new ones, it's just the room name.
-        let roomName = interview.meeting_link;
-        if (!roomName) {
-            roomName = `AK-Interview-${interview.id}`; // Fallback
-        }
-
-        // Ensure clean room name if it was a URL
-        if (roomName.startsWith('http')) {
-            roomName = roomName.split('/').pop();
-        }
-
         setActiveMeeting({
             id: interview.id,
-            roomName: roomName
+            roomName: interview.meeting_link || `AfricaKonnect-Interview-${interview.id}`
         });
     };
 
@@ -123,7 +107,6 @@ const Step3Interview = ({ onNext }) => {
                         roomName={activeMeeting.roomName}
                         userName={user?.name || user?.email || 'User'}
                         userData={user}
-                        meetingId={activeMeeting.id}
                         onLeave={() => setActiveMeeting(null)}
                     />
                 </div>

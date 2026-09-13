@@ -60,7 +60,7 @@ const ManageProjectBids = () => {
 
     const scheduleInterview = async (details) => {
         await api.interviews.schedule({ ...details, projectId: id, expertId: interviewBid.expert_id });
-        toast.success('Google Meet interview created and shared with the expert.');
+        toast.success('Jitsi interview room created and shared with the expert.');
     };
 
     const fetchBids = async () => {
@@ -219,7 +219,7 @@ const ManageProjectBids = () => {
                                         </div>
                                         
                                         <button onClick={() => setInterviewBid(bid)} className="flex items-center justify-center gap-2 text-sm font-bold text-gray-500 hover:text-primary transition-colors mt-2">
-                                            <Video size={16} /> Schedule Google Meet
+                                            <Video size={16} /> Schedule Video Interview
                                         </button>
                                     </div>
                                 </div>

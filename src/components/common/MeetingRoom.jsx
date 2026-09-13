@@ -2,18 +2,34 @@ import React from 'react';
 import { JitsiMeeting } from '@jitsi/react-sdk';
 import { Loader2 } from 'lucide-react';
 
-const safeRoomName = (value = '') => `AfricaKonnect-${String(value).replace(/[^a-zA-Z0-9-]/g, '-')}`;
+const getMeetingTarget = (value = '') => {
+    const raw = String(value).trim();
+    let domain = import.meta.env.VITE_JITSI_DOMAIN || 'meet.jit.si';
+    let fromUrl = raw;
+    if (/^https?:\/\//i.test(raw)) {
+        const parsed = new URL(raw);
+        domain = parsed.host;
+        fromUrl = parsed.pathname.split('/').filter(Boolean).pop() || '';
+    }
+    const clean = decodeURIComponent(fromUrl || '').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 180);
+    return {
+        domain,
+        roomName: clean.startsWith('AfricaKonnect-') ? clean : `AfricaKonnect-${clean || 'meeting'}`
+    };
+};
 
 /**
  * A deterministic project room means the client and expert always join the
  * same live meeting from the shared project link. Jitsi supplies WebRTC audio,
  * video, screen sharing and participant controls without client-side secrets.
  */
-const MeetingRoom = ({ roomName, userName, onLeave, onReady, onError, meetingId }) => (
+const MeetingRoom = ({ roomName, userName, onLeave, onReady, onError, meetingId }) => {
+    const meeting = getMeetingTarget(roomName || meetingId);
+    return (
     <div className="h-full min-h-[520px] w-full overflow-hidden rounded-xl bg-gray-950">
         <JitsiMeeting
-            domain="meet.jit.si"
-            roomName={safeRoomName(meetingId || roomName)}
+            domain={meeting.domain}
+            roomName={meeting.roomName}
             configOverwrite={{
                 prejoinPageEnabled: true,
                 disableDeepLinking: true,
@@ -23,7 +39,7 @@ const MeetingRoom = ({ roomName, userName, onLeave, onReady, onError, meetingId 
                 toolbarButtons: [
                     'microphone', 'camera', 'desktop', 'chat', 'participants-pane',
                     'raisehand', 'tileview', 'select-background', 'settings',
-                    'fullscreen', 'hangup'
+                    'videoquality', 'shortcuts', 'fullscreen', 'hangup'
                 ]
             }}
             interfaceConfigOverwrite={{
@@ -48,6 +64,7 @@ const MeetingRoom = ({ roomName, userName, onLeave, onReady, onError, meetingId 
             }}
         />
     </div>
-);
+    );
+};
 
 export default MeetingRoom;

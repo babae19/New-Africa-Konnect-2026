@@ -511,18 +511,22 @@ const VideoConferenceTab = ({ project, user, onNotify, interviews = [], onSchedu
     const [meetingError, setMeetingError] = useState('');
     const [showSchedule, setShowSchedule] = useState(false);
 
-    const upcomingMeeting = [...interviews].filter(item => item.meeting_link).sort((a, b) => new Date(b.scheduled_at || b.scheduled_time) - new Date(a.scheduled_at || a.scheduled_time))[0];
+    const scheduledMeetings = [...interviews].filter(item => item.meeting_link);
+    const upcomingMeeting = scheduledMeetings
+        .filter(item => new Date(item.scheduled_at || item.scheduled_time) >= new Date())
+        .sort((a, b) => new Date(a.scheduled_at || a.scheduled_time) - new Date(b.scheduled_at || b.scheduled_time))[0]
+        || scheduledMeetings.sort((a, b) => new Date(b.scheduled_at || b.scheduled_time) - new Date(a.scheduled_at || a.scheduled_time))[0];
     const meetingLink = upcomingMeeting?.meeting_link || '';
 
     const handleJoin = async () => {
         if (!meetingLink) { setShowSchedule(true); return; }
         setJoining(true);
         setMeetingError('');
-        window.open(meetingLink, '_blank', 'noopener,noreferrer');
+        setInMeeting(true);
         try {
-            await onNotify?.(`📹 Google Meet is ready for **${project.title}**.\n\nJoin here: ${meetingLink}`);
+            await onNotify?.(`📹 The video room is ready for **${project.title}**.\n\nJoin here: ${meetingLink}`);
         } catch {
-            toast.warning('Meeting opened, but the team notification could not be sent. Copy and share the link.');
+            toast.warning('The room opened, but the team notification could not be sent. Copy and share the link.');
         } finally {
             setJoining(false);
         }
@@ -562,10 +566,9 @@ const VideoConferenceTab = ({ project, user, onNotify, interviews = [], onSchedu
                 </div>
                 <div className="flex-1">
                     <MeetingRoom 
-                        roomName={project.title} 
+                        roomName={meetingLink}
                         userName={user?.name || 'User'} 
                         userData={user}
-                        meetingId={project.id}
                         onLeave={() => setInMeeting(false)} 
                         onReady={() => { setJoining(false); setMeetingError(''); }}
                         onError={() => setMeetingError('The meeting service could not connect. Check camera permissions and your internet connection, then retry.')}
@@ -594,8 +597,8 @@ const VideoConferenceTab = ({ project, user, onNotify, interviews = [], onSchedu
                 </div>
 
                 <div>
-                    <h2 className="text-2xl font-black text-gray-900 mb-2">Google Meet Workspace</h2>
-                    <p className="text-gray-500 text-sm">Schedule a Google Meet with automatic calendar invitations for the client and expert.</p>
+                    <h2 className="text-2xl font-black text-gray-900 mb-2">Open Video Workspace</h2>
+                    <p className="text-gray-500 text-sm">Meet securely in the browser with Jitsi—no account, paid API, or separate application required.</p>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-left">
@@ -613,7 +616,7 @@ const VideoConferenceTab = ({ project, user, onNotify, interviews = [], onSchedu
                 {/* Meeting link preview */}
                 <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-left">
                     <Link size={13} className="text-gray-400 flex-shrink-0" />
-                    <input readOnly value={meetingLink || 'Schedule a meeting to generate the Google Meet link'} onFocus={e => e.target.select()} className="text-xs text-gray-500 truncate flex-1 bg-transparent outline-none" aria-label="Meeting invite link" />
+                    <input readOnly value={meetingLink || 'Schedule a meeting to generate a private room link'} onFocus={e => e.target.select()} className="text-xs text-gray-500 truncate flex-1 bg-transparent outline-none" aria-label="Meeting invite link" />
                     <button onClick={handleCopy} className="text-xs font-bold text-primary hover:text-primary/80 flex-shrink-0">
                         {copied ? 'Copied!' : 'Copy'}
                     </button>
@@ -625,7 +628,7 @@ const VideoConferenceTab = ({ project, user, onNotify, interviews = [], onSchedu
                         className="w-full py-4 text-base font-bold text-white bg-primary hover:bg-primary/90 rounded-2xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.99] transition-all"
                     >
                         <Video size={18} className="inline mr-2" />
-                        {joining ? 'Opening Google Meet…' : meetingLink ? 'Join Google Meet & Notify Team' : 'Schedule Google Meet'}
+                        {joining ? 'Opening video room…' : meetingLink ? 'Join Video Room & Notify Team' : 'Schedule Video Meeting'}
                     </button>
                     <button onClick={handleCopy}
                         className="w-full py-3 text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:border-gray-300 rounded-2xl transition-colors">
@@ -633,11 +636,11 @@ const VideoConferenceTab = ({ project, user, onNotify, interviews = [], onSchedu
                     </button>
                     <button onClick={() => meetingLink ? window.open(meetingLink, '_blank', 'noopener,noreferrer') : setShowSchedule(true)}
                         className="w-full py-3 text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:border-primary rounded-2xl transition-colors">
-                        <ExternalLink size={14} className="inline mr-1.5" /> {meetingLink ? 'Open Meet in a new tab' : 'Choose meeting date and time'}
+                        <ExternalLink size={14} className="inline mr-1.5" /> {meetingLink ? 'Open room in a new tab' : 'Choose meeting date and time'}
                     </button>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-[11px] text-gray-400">
-                    <LockKeyhole size={13} className="text-green-500" /> Only project participants receive this room link.
+                    <LockKeyhole size={13} className="text-green-500" /> Anyone with this link may join. Share it only with your project team.
                 </div>
                 <ScheduleInterviewModal
                     isOpen={showSchedule}
@@ -646,7 +649,7 @@ const VideoConferenceTab = ({ project, user, onNotify, interviews = [], onSchedu
                     onSchedule={async details => {
                         if (!project.selected_expert_id) throw new Error('Select an expert before scheduling a meeting.');
                         await onSchedule({ ...details, expertId: project.selected_expert_id });
-                        toast.success('Google Meet created and calendar invitations sent.');
+                        toast.success('Private Jitsi room created and shared with the expert.');
                         setShowSchedule(false);
                     }}
                 />

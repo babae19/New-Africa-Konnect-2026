@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Calendar, Clock, Video, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 const ScheduleInterviewModal = ({ isOpen, onClose, onSchedule, expertName = 'the expert' }) => {
     const [date, setDate] = useState('');
@@ -17,6 +18,10 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSchedule, expertName = 'the
         try {
             // Combine date and time
             const scheduledAt = new Date(`${date}T${time}`);
+            if (Number.isNaN(scheduledAt.getTime()) || scheduledAt <= new Date()) {
+                toast.error('Please choose a valid future date and time.');
+                return;
+            }
 
             await onSchedule({
                 scheduledAt: scheduledAt.toISOString(),
@@ -26,7 +31,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSchedule, expertName = 'the
             onClose();
         } catch (error) {
             console.error("Failed to schedule:", error);
-            // Optionally set error state here
+            toast.error(error.message || 'The meeting could not be scheduled.');
         } finally {
             setLoading(false);
         }
@@ -94,7 +99,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSchedule, expertName = 'the
                         <div>
                             <p className="font-semibold text-blue-900 text-sm">Video Conferencing</p>
                             <p className="text-xs text-blue-700 mt-1">
-                                A Google Meet link and calendar invitation will be created and shared with both parties automatically.
+                                A private Jitsi room will be created and shared with both project participants. No account or paid meeting API is required.
                             </p>
                         </div>
                     </div>

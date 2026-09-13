@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
+import socketService from '../lib/socket';
 
 const AuthContext = createContext({});
 
@@ -120,6 +121,7 @@ export const AuthProvider = ({ children }) => {
             if (dbUser && dbUser.id) {
                 setUser(dbUser);
                 localStorage.setItem('userInfo', JSON.stringify(dbUser));
+                socketService.connect();
                 await loadProfile(dbUser);
                 return { user: dbUser, error: null };
             } else {
@@ -138,6 +140,7 @@ export const AuthProvider = ({ children }) => {
             if (dbUser && dbUser.id) {
                 setUser(dbUser);
                 localStorage.setItem('userInfo', JSON.stringify(dbUser));
+                socketService.connect();
                 await loadProfile(dbUser);
                 return { user: dbUser, error: null };
             } else {
@@ -159,6 +162,7 @@ export const AuthProvider = ({ children }) => {
             setUser(null);
             setProfile(null);
             localStorage.removeItem('userInfo');
+            socketService.disconnect();
         }
         return { error: null };
     };
@@ -223,6 +227,8 @@ export const AuthProvider = ({ children }) => {
     };
 
     const uploadProfileImage = async (file) => {
+        const previousUser = user;
+        const previousProfile = profile;
         // 1. Immediate Optimistic Update
         const optimisticUrl = URL.createObjectURL(file);
 
@@ -249,14 +255,20 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('userInfo', JSON.stringify({ ...stored, profile_image_url: url }));
 
             // Update Backend Profiles
-            await updateProfile({ profile_image_url: url });
+            const result = await updateProfile({ profile_image_url: url });
+            if (result.error) throw result.error;
 
             return { url };
         } catch (error) {
             console.error('Image upload failed:', error);
-            // Revert on failure (optional, or let next load fix it)
+            setUser(previousUser);
+            setProfile(previousProfile);
+            const stored = JSON.parse(localStorage.getItem('userInfo') || '{}');
+            localStorage.setItem('userInfo', JSON.stringify({ ...stored, profile_image_url: previousUser?.profile_image_url || null }));
             toast.error("Failed to save profile picture permanently.");
             throw error;
+        } finally {
+            URL.revokeObjectURL(optimisticUrl);
         }
     };
 

@@ -4,9 +4,12 @@ import { io } from 'socket.io-client';
 // In development: use /api which Vite proxy will handle
 // In production: use the actual backend URL
 const getSocketURL = () => {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL;
+    if (socketUrl) return socketUrl;
     const apiUrl = import.meta.env.VITE_API_URL;
 
-    // If VITE_API_URL is set to /api (development with proxy)
+    // If VITE_API_URL is set to /api, Vite proxies sockets in development.
+    // Production frontends must set VITE_SOCKET_URL to the actual backend.
     if (apiUrl === '/api') {
         return window.location.origin; // Use current origin, proxy will handle it
     }
@@ -67,15 +70,20 @@ class SocketClient {
             return this;
         }
 
+        const user = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        const token = user?.token;
+        if (this.socket && this.socket.auth?.token !== token) {
+            this.socket.auth = { token };
+            this.socket.disconnect().connect();
+        }
+
         if (!this.socket) {
-            const user = JSON.parse(localStorage.getItem('userInfo') || '{}');
-            const token = user?.token;
 
             this.socket = io(SOCKET_URL, {
                 transports: ['websocket', 'polling'],
                 reconnection: true,
                 reconnectionDelay: 1000,
-                reconnectionAttempts: 5,
+                reconnectionAttempts: Infinity,
                 timeout: 10000,
                 auth: {
                     token: token

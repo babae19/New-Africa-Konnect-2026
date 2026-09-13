@@ -26,8 +26,10 @@ export const ProjectProvider = ({ children }) => {
     useEffect(() => {
         const socket = socketService.connect();
         const user = JSON.parse(localStorage.getItem('userInfo'));
+        const rejoinUser = () => user && socketService.joinUser(user.id);
         if (user) {
             socketService.joinUser(user.id);
+            socket.on('connect', rejoinUser);
         }
 
         socket.on('receive_message', (data) => {
@@ -127,6 +129,7 @@ export const ProjectProvider = ({ children }) => {
         });
 
         return () => {
+            socket.off('connect', rejoinUser);
             socket.off('receive_message');
             socket.off('project_update');
             socket.off('project_invite');

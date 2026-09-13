@@ -119,7 +119,8 @@ const updateExpertProfile = async (userId, profileData) => {
 // Get all experts with optional filters
 const getAllExperts = async (filters = {}) => {
     let text = `
-        SELECT ep.*, u.name, u.email, COALESCE(ep.profile_image_url, u.profile_image_url) as profile_image_url
+        SELECT ep.*, u.name, u.email,
+               COALESCE(NULLIF(CASE WHEN ep.profile_image_url LIKE 'blob:%' THEN NULL ELSE ep.profile_image_url END, ''), u.profile_image_url) as profile_image_url
         FROM expert_profiles ep
         JOIN users u ON ep.user_id = u.id
         WHERE 1=1

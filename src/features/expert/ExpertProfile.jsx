@@ -98,12 +98,8 @@ const ExpertProfile = ({ user, existingProfile, onComplete }) => {
 
         setUploadingImage(true);
         try {
-            // Create preview
-            const previewUrl = URL.createObjectURL(file);
-            setProfileImage(previewUrl);
-
-            // Upload to server
-            await uploadProfileImage(file);
+            const { url } = await uploadProfileImage(file);
+            setProfileImage(url);
             toast.success('Profile picture updated!');
         } catch (error) {
             console.error('Failed to upload image', error);

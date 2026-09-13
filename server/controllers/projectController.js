@@ -38,6 +38,10 @@ exports.createProject = async (req, res) => {
             duration: duration || req.body.duration
         });
 
+        if (project.open_for_bidding && project.status === 'open') {
+            req.app.get('io')?.to('marketplace').emit('marketplace_project_upserted', project);
+        }
+
         // Trigger background matching job
         if (project.status === 'open' || project.status === 'published') {
             const io = req.app.get('io');
@@ -215,7 +219,10 @@ exports.deleteProject = async (req, res) => {
         await deleteProject(id);
 
         const io = req.app.get('io');
-        if (io) io.to(`project_${id}`).emit('project_deleted', { id });
+        if (io) {
+            io.to(`project_${id}`).emit('project_deleted', { id });
+            if (project.open_for_bidding) io.to('marketplace').emit('marketplace_project_removed', { id });
+        }
 
         res.json({ message: 'Project deleted successfully' });
     } catch (error) {

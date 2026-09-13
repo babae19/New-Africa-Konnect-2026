@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
@@ -34,6 +34,9 @@ const ProjectMarketplace = () => {
     });
     const [viewMode, setViewMode] = useState('grid');
     const [savedSearches, setSavedSearches] = useState([]);
+    const latestFilters = useRef(filters);
+    const requestId = useRef(0);
+    latestFilters.current = filters;
 
     useEffect(() => {
         // Allow both experts and clients
@@ -42,44 +45,51 @@ const ProjectMarketplace = () => {
             navigate('/signin');
             return;
         }
-        fetchMarketplaceProjects();
         fetchSavedSearches();
     }, [user, navigate]);
 
     useEffect(() => {
         // Debounce search
         const timer = setTimeout(() => {
-            fetchMarketplaceProjects();
+            fetchMarketplaceProjects(filters);
         }, 500);
         return () => clearTimeout(timer);
     }, [filters]);
 
     useEffect(() => {
         if (!socket) return undefined;
-        const refresh = () => fetchMarketplaceProjects();
-        socket.emit('join_marketplace');
+        const refresh = () => fetchMarketplaceProjects(latestFilters.current);
+        const join = () => {
+            socket.emit('join_marketplace');
+            refresh();
+        };
+        socket.on('connect', join);
+        if (socket.socket?.connected) join();
         socket.on('marketplace_project_upserted', refresh);
         socket.on('marketplace_project_removed', refresh);
         socket.on('new_bid', refresh);
         return () => {
             socket.emit('leave_marketplace');
+            socket.off('connect', join);
             socket.off('marketplace_project_upserted', refresh);
             socket.off('marketplace_project_removed', refresh);
             socket.off('new_bid', refresh);
         };
     }, [socket]);
 
-    const fetchMarketplaceProjects = async () => {
+    const fetchMarketplaceProjects = async (activeFilters = latestFilters.current) => {
+        const currentRequest = ++requestId.current;
         setLoading(true);
         try {
-            const response = await api.projects.getMarketplace(filters);
-            setProjects(response.projects || []);
+            const response = await api.projects.getMarketplace(activeFilters);
+            if (currentRequest === requestId.current) setProjects(response.projects || []);
         } catch (error) {
-            console.error('Failed to fetch marketplace projects:', error);
-            toast.error('Failed to load projects');
-            setProjects([]);
+            if (currentRequest === requestId.current) {
+                console.error('Failed to fetch marketplace projects:', error);
+                toast.error('Failed to load projects');
+            }
         } finally {
-            setLoading(false);
+            if (currentRequest === requestId.current) setLoading(false);
         }
     };
 

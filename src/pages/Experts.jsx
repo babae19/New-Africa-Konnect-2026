@@ -150,8 +150,7 @@ export default function Experts() {
     const fetchExperts = async (silent = false) => {
         if (!silent) setLoading(true);
         try {
-            // Explicitly request all experts regardless of vetting status
-            const data = await api.experts.getAll({ vettingStatus: 'all' });
+            const data = await api.experts.getAll({ vettingStatus: 'approved' });
             if (data && data.experts) {
                 setExperts(data.experts);
             }

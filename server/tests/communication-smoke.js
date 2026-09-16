@@ -24,7 +24,12 @@ mock('models/projectModel', {
         return { ...project };
     },
     updateExpertStatus: async (id, status) => ({ ...project, expert_status: status }),
-    addMember: async () => null
+    addMember: async () => null,
+    getProjectMembers: async () => [{ user_id: client.id }]
+});
+mock('models/projectStateMachine', {
+    getStateHistory: async () => [{ to_state: 'draft' }],
+    transitionState: async (id, state) => ({ ...project, status: state })
 });
 mock('models/messageModel', {
     createMessage: async data => { const message = { id: String(sent.length + 1), ...data }; sent.push(message); return message; },
@@ -79,6 +84,12 @@ async function run() {
     const stranger = response();
     await projects.getProject(request({ id: '44444444-4444-4444-8444-444444444444', role: 'expert' }, {}, { id: projectId }), stranger);
     assert.equal(stranger.statusCode, 403);
-    console.log('Communication smoke checks passed: bidirectional DMs, invitation notification, duplicate rejection, invited-only project view.');
+    const hiddenMembers = response();
+    await projects.getMembers(request({ id: '44444444-4444-4444-8444-444444444444', role: 'expert' }, {}, { id: projectId }), hiddenMembers);
+    assert.equal(hiddenMembers.statusCode, 403);
+    const hiddenHistory = response();
+    await projects.getHistory(request({ id: '44444444-4444-4444-8444-444444444444', role: 'expert' }, {}, { id: projectId }), hiddenHistory);
+    assert.equal(hiddenHistory.statusCode, 403);
+    console.log('Communication smoke checks passed: bidirectional DMs, invitation consent, duplicate rejection, and private project access controls.');
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

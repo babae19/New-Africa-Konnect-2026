@@ -32,13 +32,16 @@ router.post('/', authorize('client'), validateProject, createProject);
 router.post('/inquiry', authorize('client'), getOrCreateInquiry);
 
 // Get all projects (with filters)
-router.get('/', getAllProjects);
-
-// Get specific project
-router.get('/:id', validateId, getProject);
+router.get('/', authorize('admin'), getAllProjects);
 
 // Get client's projects
 router.get('/client/:clientId', validateId, getClientProjects);
+
+// Get expert invites. Static routes must be registered before /:id.
+router.get('/expert/invites', authorize('expert'), getInvitedProjects);
+
+// Get specific project
+router.get('/:id', validateId, getProject);
 
 // Update project
 router.put('/:id', validateId, validateProject, updateProject);
@@ -56,13 +59,9 @@ router.post('/:id/invite', validateId, authorize('client'), inviteExpert);
 router.put('/:id/invite', validateId, authorize('expert'), respondToInvite);
 
 // Escrow & Payments
-router.post('/:id/fund', validateId, authorize('client'), paymentLimiter, fundEscrow);
-router.post('/:id/release', validateId, authorize('client'), paymentLimiter, releaseFunds);
-router.get('/:id/transactions', validateId, getHistory);
-
-// Get expert invites
-// Get expert invites
-router.get('/expert/invites', authorize('expert'), getInvitedProjects);
+router.post('/:projectId/fund', validateId, authorize('client'), paymentLimiter, fundEscrow);
+router.post('/:projectId/release', validateId, authorize('client'), paymentLimiter, releaseFunds);
+router.get('/:projectId/transactions', validateId, getHistory);
 
 // Check Project Members
 const { addProjectMember, getMembers } = require('../controllers/projectController');

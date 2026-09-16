@@ -26,7 +26,7 @@ const Step2Match = ({ onNext, onInvitationSent, expertToHire }) => {
             setLoading(true);
 
             // Fetch verified experts for manual review.
-            const expertsData = await api.experts.getAll({ verified: 'true' });
+            const expertsData = await api.experts.getAll({ vettingStatus: 'approved' });
             setExperts(expertsData.experts || []);
 
             // 2. Fetch Applicants if project exists

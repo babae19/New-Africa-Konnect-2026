@@ -37,6 +37,8 @@ const updateEscrowBalance = async (id, releasedAmount) => {
             released_amount = released_amount + $2,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
+          AND status = 'active'
+          AND released_amount + $2 <= total_amount
         RETURNING *
     `;
     const result = await query(text, [id, releasedAmount]);

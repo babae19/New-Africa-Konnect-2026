@@ -154,7 +154,62 @@ const ensureRuntimeSchema = async () => {
             role VARCHAR(50) DEFAULT 'member',
             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(project_id, user_id)
-        )
+        );
+        CREATE INDEX IF NOT EXISTS idx_project_members_project ON project_members(project_id);
+        CREATE INDEX IF NOT EXISTS idx_project_members_user ON project_members(user_id);
+        ALTER TABLE project_members ENABLE ROW LEVEL SECURITY
+    `);
+
+    await query(`
+        CREATE TABLE IF NOT EXISTS escrow_accounts (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            project_id UUID UNIQUE NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            total_amount NUMERIC(15, 2) NOT NULL CHECK (total_amount > 0),
+            released_amount NUMERIC(15, 2) NOT NULL DEFAULT 0 CHECK (released_amount >= 0),
+            platform_fee_percent NUMERIC(5, 2) NOT NULL DEFAULT 10 CHECK (platform_fee_percent BETWEEN 0 AND 100),
+            status VARCHAR(20) NOT NULL DEFAULT 'active',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            CHECK (released_amount <= total_amount)
+        );
+        CREATE INDEX IF NOT EXISTS idx_escrow_project ON escrow_accounts(project_id);
+        ALTER TABLE escrow_accounts ENABLE ROW LEVEL SECURITY
+    `);
+
+    await query(`
+        CREATE TABLE IF NOT EXISTS payment_releases (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            escrow_account_id UUID NOT NULL REFERENCES escrow_accounts(id) ON DELETE CASCADE,
+            milestone_id UUID REFERENCES project_milestones(id) ON DELETE SET NULL,
+            amount NUMERIC(15, 2) NOT NULL CHECK (amount > 0),
+            platform_fee NUMERIC(15, 2) NOT NULL DEFAULT 0,
+            expert_receives NUMERIC(15, 2) NOT NULL CHECK (expert_receives >= 0),
+            requested_by UUID REFERENCES users(id) ON DELETE SET NULL,
+            approved_by UUID REFERENCES users(id) ON DELETE SET NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'released', 'rejected')),
+            requested_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            approved_at TIMESTAMP WITH TIME ZONE,
+            released_at TIMESTAMP WITH TIME ZONE
+        );
+        CREATE INDEX IF NOT EXISTS idx_payment_releases_escrow ON payment_releases(escrow_account_id, requested_at DESC);
+        ALTER TABLE payment_releases ENABLE ROW LEVEL SECURITY
+    `);
+
+    await query(`
+        CREATE TABLE IF NOT EXISTS invoices (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            invoice_number VARCHAR(50) UNIQUE NOT NULL,
+            amount NUMERIC(15, 2) NOT NULL CHECK (amount > 0),
+            platform_fee NUMERIC(15, 2) NOT NULL DEFAULT 0,
+            total_amount NUMERIC(15, 2) NOT NULL CHECK (total_amount > 0),
+            issued_to UUID REFERENCES users(id) ON DELETE SET NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            issued_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            paid_at TIMESTAMP WITH TIME ZONE
+        );
+        CREATE INDEX IF NOT EXISTS idx_invoices_project ON invoices(project_id, issued_at DESC);
+        ALTER TABLE invoices ENABLE ROW LEVEL SECURITY
     `);
 
     await query(`

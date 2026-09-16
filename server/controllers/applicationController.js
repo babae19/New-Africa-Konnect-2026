@@ -16,7 +16,8 @@ exports.applyToProject = async (req, res) => {
         const expertId = req.user.id;
 
         // Validation
-        if (!pitch || !rate) {
+        const proposedRate = Number(rate);
+        if (!pitch || typeof pitch !== 'string' || !Number.isFinite(proposedRate) || proposedRate <= 0) {
             return res.status(400).json({ message: 'Pitch and rate are required' });
         }
 
@@ -37,7 +38,7 @@ exports.applyToProject = async (req, res) => {
             projectId,
             expertId,
             pitch,
-            rate
+            rate: proposedRate
         });
 
         // Notify client
@@ -56,6 +57,7 @@ exports.applyToProject = async (req, res) => {
         res.status(201).json(application);
     } catch (error) {
         console.error('Apply error:', error);
+        if (error.code === '23505') return res.status(409).json({ message: 'You have already applied to this project' });
         res.status(500).json({ message: error.message });
     }
 };
@@ -118,7 +120,7 @@ exports.updateStatus = async (req, res) => {
             `application_${status}`,
             {
                 status: status,
-                // projectTitle would require joining or fetching again
+                projectTitle: project.title,
                 actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/dashboard`
             },
             req.app.get('io')

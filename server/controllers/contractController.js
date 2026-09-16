@@ -220,8 +220,8 @@ exports.updateStatus = async (req, res) => {
         const { id } = req.params;
         const { status } = req.body;
 
-        if (!['pending', 'signed', 'active', 'completed', 'cancelled'].includes(status)) {
-            return res.status(400).json({ message: 'Invalid contract status' });
+        if (!['completed', 'cancelled'].includes(status)) {
+            return res.status(400).json({ message: 'Contracts become signed and active only through the signing and funding workflows' });
         }
 
         const contract = await getContractById(id);
@@ -250,7 +250,7 @@ exports.updateStatus = async (req, res) => {
 exports.updateContract = async (req, res) => {
     try {
         const { id } = req.params;
-        const { terms, amount, status } = req.body;
+        const { terms, amount } = req.body;
 
         if (terms !== undefined && (typeof terms !== 'string' || terms.length > 10000)) {
             return res.status(400).json({ message: 'Terms must be text no longer than 10000 characters' });
@@ -276,8 +276,7 @@ exports.updateContract = async (req, res) => {
 
         const updatedContract = await updateContract(id, {
             terms,
-            amount,
-            status
+            amount
         });
 
         if (!updatedContract) return res.status(409).json({ message: 'Contract is locked' });

@@ -8,6 +8,13 @@ const {
 } = require('../models/projectModel');
 const projectMatchingService = require('../services/projectMatchingService');
 
+const canAccessPrivateProject = async (project, user) => {
+    if (user.role === 'admin' || project.client_id === user.id) return true;
+    if (project.selected_expert_id === user.id && project.expert_status === 'accepted') return true;
+    const { isMember } = require('../models/projectModel');
+    return isMember(project.id, user.id);
+};
+
 // Create new project
 exports.createProject = async (req, res) => {
     try {
@@ -421,9 +428,13 @@ exports.updateState = async (req, res) => {
         const { state, reason } = req.body;
         const userId = req.user.id;
 
-        const { transitionState } = require('../models/projectStateMachine');
+        const projectRecord = await getProjectById(id);
+        if (!projectRecord) return res.status(404).json({ message: 'Project not found' });
+        if (!await canAccessPrivateProject(projectRecord, req.user)) {
+            return res.status(403).json({ message: 'Not authorized to update this project' });
+        }
 
-        // Add authorization check here if needed (e.g. only admin or owner can change certain states)
+        const { transitionState } = require('../models/projectStateMachine');
 
         const project = await transitionState(id, state, userId, reason);
 
@@ -440,6 +451,11 @@ exports.updateState = async (req, res) => {
 exports.getHistory = async (req, res) => {
     try {
         const { id } = req.params;
+        const project = await getProjectById(id);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
+        if (!await canAccessPrivateProject(project, req.user)) {
+            return res.status(403).json({ message: 'Not authorized to view this project history' });
+        }
         const { getStateHistory } = require('../models/projectStateMachine');
 
         const history = await getStateHistory(id);
@@ -456,6 +472,13 @@ exports.addProjectMember = async (req, res) => {
         const { id } = req.params;
         const { email, role } = req.body;
 
+        if (!email || typeof email !== 'string') {
+            return res.status(400).json({ message: 'A valid member email is required' });
+        }
+        if (role !== undefined && !['client', 'expert', 'member', 'viewer'].includes(role)) {
+            return res.status(400).json({ message: 'Invalid project member role' });
+        }
+
         const project = await getProjectById(id);
         if (!project) return res.status(404).json({ message: 'Project not found' });
 
@@ -471,6 +494,9 @@ exports.addProjectMember = async (req, res) => {
 
         if (!userToAdd) {
             return res.status(404).json({ message: 'User not found' });
+        }
+        if (userToAdd.role === 'expert') {
+            return res.status(409).json({ message: 'Experts must be invited and accept before joining collaboration' });
         }
 
         const { addMember } = require('../models/projectModel');
@@ -499,6 +525,11 @@ exports.addProjectMember = async (req, res) => {
 exports.getMembers = async (req, res) => {
     try {
         const { id } = req.params;
+        const project = await getProjectById(id);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
+        if (!await canAccessPrivateProject(project, req.user)) {
+            return res.status(403).json({ message: 'Not authorized to view project members' });
+        }
         const { getProjectMembers } = require('../models/projectModel');
         const members = await getProjectMembers(id);
         res.json(members);
@@ -519,7 +550,7 @@ exports.getOrCreateInquiry = async (req, res) => {
         }
 
         const { findUserById } = require('../models/userModel');
-        const { findExistingInquiry, createProject, assignExpert, addMember } = require('../models/projectModel');
+        const { findExistingInquiry, createProject, assignExpert } = require('../models/projectModel');
 
         // 1. Check for existing inquiry
         let project = await findExistingInquiry(clientId, expertId);
@@ -530,7 +561,7 @@ exports.getOrCreateInquiry = async (req, res) => {
 
         // 2. Create new inquiry project
         const expert = await findUserById(expertId);
-        if (!expert) {
+        if (!expert || expert.role !== 'expert') {
             return res.status(404).json({ message: 'Expert not found' });
         }
 
@@ -541,10 +572,9 @@ exports.getOrCreateInquiry = async (req, res) => {
             status: 'draft'
         });
 
-        // 3. Assign expert and add as member
-        await assignExpert(project.id, expertId);
-        await addMember(project.id, expertId, 'expert');
-        await addMember(project.id, clientId, 'client');
+        // Assignment remains pending until the expert accepts. A pending direct
+        // inquiry must never grant collaboration access implicitly.
+        project = await assignExpert(project.id, expertId);
 
         res.status(201).json(project);
     } catch (error) {

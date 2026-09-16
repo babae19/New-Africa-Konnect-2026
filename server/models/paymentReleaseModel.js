@@ -31,10 +31,15 @@ const approveRelease = async (id, approvedBy) => {
             status = 'approved',
             approved_by = $2,
             approved_at = CURRENT_TIMESTAMP
-        WHERE id = $1
+        WHERE id = $1 AND status = 'pending'
         RETURNING *
     `;
     const result = await query(text, [id, approvedBy]);
+    return result.rows[0];
+};
+
+const getReleaseById = async (id) => {
+    const result = await query('SELECT * FROM payment_releases WHERE id = $1', [id]);
     return result.rows[0];
 };
 
@@ -71,6 +76,7 @@ const getReleasesByEscrow = async (escrowAccountId) => {
 
 module.exports = {
     createReleaseRequest,
+    getReleaseById,
     approveRelease,
     markAsReleased,
     getReleasesByEscrow

@@ -144,7 +144,9 @@ exports.getAllExperts = async (req, res) => {
         const { vettingStatus, skills, location, minRate, maxRate, limit, offset } = req.query;
 
         const filters = {
-            vettingStatus: vettingStatus === 'all' ? undefined : (vettingStatus || undefined), // Return all if undefined or 'all'
+            // This is a public endpoint. Pending and rejected profiles must
+            // never be exposed by changing a query string.
+            vettingStatus: ['approved', 'verified'].includes(vettingStatus) ? vettingStatus : 'approved',
             skills: skills ? skills.split(',') : undefined,
             location,
             minRate: minRate ? parseFloat(minRate) : undefined,

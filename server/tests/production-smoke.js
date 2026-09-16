@@ -147,6 +147,19 @@ async function run() {
     assert.match(apiSource, /`\/projects\/\$\{projectId\}\/releases\/\$\{releaseId\}\/approve`/);
     assert.match(apiSource, /approveRelease:[\s\S]*?method: 'PUT'/);
 
+    const projectRoutes = fs.readFileSync(path.join(serverRoot, 'routes/projectRoutes.js'), 'utf8');
+    assert.ok(projectRoutes.indexOf("router.get('/client/:clientId'") < projectRoutes.indexOf("router.get('/:id'"));
+    assert.ok(projectRoutes.indexOf("router.get('/expert/invites'") < projectRoutes.indexOf("router.get('/:id'"));
+    assert.match(projectRoutes, /router\.post\('\/:projectId\/fund'/);
+    assert.match(projectRoutes, /router\.get\('\/:projectId\/transactions'/);
+
+    const publicExperts = [
+        path.resolve(serverRoot, '../src/pages/Experts.jsx'),
+        path.resolve(serverRoot, '../src/features/home/FeaturedExperts.jsx'),
+        path.resolve(serverRoot, '../src/features/project-hub/Step2Match.jsx')
+    ].map(filename => fs.readFileSync(filename, 'utf8'));
+    publicExperts.forEach(source => assert.match(source, /vettingStatus:\s*'approved'/));
+
     const firstMeeting = createMeetingRoom({ projectId: 'project-123', purpose: 'interview' });
     const secondMeeting = createMeetingRoom({ projectId: 'project-123', purpose: 'interview' });
     assert.match(firstMeeting.meetingLink, /^https:\/\/meet\.jit\.si\/AfricaKonnect-interview-project123-[a-f0-9]{36}$/);

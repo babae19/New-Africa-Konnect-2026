@@ -160,6 +160,13 @@ exports.releaseFunds = async (req, res) => {
 exports.getHistory = async (req, res) => {
     try {
         const { projectId } = req.params;
+        const project = await getProjectById(projectId);
+        if (!project) return res.status(404).json({ message: 'Project not found' });
+        const { isMember } = require('../models/projectModel');
+        const canView = req.user.role === 'admin' || project.client_id === req.user.id ||
+            (project.selected_expert_id === req.user.id && project.expert_status === 'accepted') ||
+            await isMember(projectId, req.user.id);
+        if (!canView) return res.status(403).json({ message: 'Not authorized to view transactions' });
         const transactions = await getTransactionsByProject(projectId);
         res.json(transactions);
     } catch (error) {

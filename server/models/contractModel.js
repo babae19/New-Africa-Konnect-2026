@@ -126,21 +126,20 @@ const updateContractStatus = async (id, status) => {
 
 // Update contract
 const updateContract = async (id, contractData) => {
-    const { terms, amount, status } = contractData;
+    const { terms, amount } = contractData;
 
     const text = `
         UPDATE contracts 
         SET 
             terms = COALESCE($1, terms),
-            amount = COALESCE($2, amount),
-            status = COALESCE($3, status)
-        WHERE id = $4
+            amount = COALESCE($2, amount)
+        WHERE id = $3
           AND locked_at IS NULL
           AND client_signed_at IS NULL
           AND expert_signed_at IS NULL
         RETURNING *
     `;
-    const values = [terms, amount, status, id];
+    const values = [terms, amount, id];
     const result = await query(text, values);
     return result.rows[0];
 };

@@ -16,7 +16,7 @@ const FeaturedExperts = () => {
         if (!silent) setLoading(true);
         try {
             // Fetch all experts (limit removed to show all as requested)
-            const data = await api.experts.getAll({ vettingStatus: 'all' });
+            const data = await api.experts.getAll({ vettingStatus: 'approved' });
             if (data && data.experts) {
                 setExperts(data.experts);
             }

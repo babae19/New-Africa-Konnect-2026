@@ -312,7 +312,7 @@ export default function ExpertDashboard() {
                                     <Search className="mr-2 text-primary" size={20} />
                                     Explore Opportunities
                                 </h2>
-                                <Button variant="ghost" size="sm">View All</Button>
+                                <Button variant="ghost" size="sm" onClick={() => navigate('/marketplace')}>View All</Button>
                             </div>
 
                             <div className="space-y-4">

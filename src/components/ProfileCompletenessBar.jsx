@@ -2,26 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { CheckCircle, AlertCircle, TrendingUp } from 'lucide-react';
 
-const ProfileCompletenessBar = ({ userId, onUpdate }) => {
+const ProfileCompletenessBar = ({ userId }) => {
     const [completeness, setCompleteness] = useState(0);
     const [loading, setLoading] = useState(true);
     const [missingFields, setMissingFields] = useState([]);
-
-    useEffect(() => {
-        loadCompleteness();
-    }, [userId]);
-
-    const loadCompleteness = async () => {
-        try {
-            const data = await api.experts.getCompleteness(userId);
-            setCompleteness(data.completeness || 0);
-            calculateMissingFields(data.completeness);
-        } catch (error) {
-            console.error('Failed to load completeness:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const calculateMissingFields = (percent) => {
         const missing = [];
@@ -38,6 +22,31 @@ const ProfileCompletenessBar = ({ userId, onUpdate }) => {
         }
         setMissingFields(missing);
     };
+
+    useEffect(() => {
+        let active = true;
+
+        const loadCompleteness = async () => {
+            try {
+                setLoading(true);
+                const data = await api.experts.getCompleteness(userId);
+                if (!active) return;
+                setCompleteness(data.completeness || 0);
+                calculateMissingFields(data.completeness);
+            } catch (error) {
+                if (active) console.error('Failed to load completeness:', error);
+            } finally {
+                if (active) setLoading(false);
+            }
+        };
+
+        if (userId) loadCompleteness();
+        else setLoading(false);
+
+        return () => {
+            active = false;
+        };
+    }, [userId]);
 
     const getColor = () => {
         if (completeness >= 90) return 'bg-green-500';

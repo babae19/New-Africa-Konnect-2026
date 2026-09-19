@@ -17,11 +17,29 @@ const SkillSelector = ({ selectedSkills = [], onChange }) => {
     }, []);
 
     useEffect(() => {
-        if (searchTerm.length >= 2) {
-            searchSkills();
-        } else {
+        if (searchTerm.length < 2) {
             setSearchResults([]);
+            setSearching(false);
+            return undefined;
         }
+
+        let active = true;
+        const timer = setTimeout(async () => {
+            setSearching(true);
+            try {
+                const data = await api.experts.searchSkills(searchTerm);
+                if (active) setSearchResults(data.skills || []);
+            } catch (error) {
+                if (active) console.error('Search failed:', error);
+            } finally {
+                if (active) setSearching(false);
+            }
+        }, 250);
+
+        return () => {
+            active = false;
+            clearTimeout(timer);
+        };
     }, [searchTerm]);
 
     const loadSkillsData = async () => {
@@ -36,18 +54,6 @@ const SkillSelector = ({ selectedSkills = [], onChange }) => {
             console.error('Failed to load skills:', error);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const searchSkills = async () => {
-        setSearching(true);
-        try {
-            const data = await api.experts.searchSkills(searchTerm);
-            setSearchResults(data.skills || []);
-        } catch (error) {
-            console.error('Search failed:', error);
-        } finally {
-            setSearching(false);
         }
     };
 

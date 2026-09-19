@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -14,19 +13,12 @@ import {
 import { toast } from 'sonner';
 
 const MyBids = () => {
-    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('bids'); // 'bids' or 'templates'
     const [bids, setBids] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all'); // 'all', 'pending', 'accepted', 'rejected'
 
-    useEffect(() => {
-        if (activeTab === 'bids') {
-            fetchMyBids();
-        }
-    }, [filter, activeTab]);
-
-    const fetchMyBids = async () => {
+    const fetchMyBids = useCallback(async () => {
         setLoading(true);
         try {
             const params = filter !== 'all' ? { status: filter } : {};
@@ -38,7 +30,13 @@ const MyBids = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filter]);
+
+    useEffect(() => {
+        if (activeTab === 'bids') {
+            fetchMyBids();
+        }
+    }, [activeTab, fetchMyBids]);
 
     const handleWithdrawBid = async (bidId) => {
         if (!confirm('Are you sure you want to withdraw this bid?')) return;

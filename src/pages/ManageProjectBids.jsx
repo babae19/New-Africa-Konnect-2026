@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { Card } from '../components/ui/Card';
@@ -23,24 +23,7 @@ const ManageProjectBids = () => {
     const [loading, setLoading] = useState(true);
     const [interviewBid, setInterviewBid] = useState(null);
 
-    useEffect(() => {
-        fetchData();
-        
-        // Listen for new bids in real-time
-        const socket = socketService.connect();
-        socket.on('new_bid', (data) => {
-            if (data.projectId === id) {
-                toast.info(`New bid from ${data.expertName}!`);
-                fetchBids(); // Refresh bid list
-            }
-        });
-
-        return () => {
-            socket.off('new_bid');
-        };
-    }, [id]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const [projRes, bidsRes] = await Promise.all([
@@ -56,20 +39,37 @@ const ManageProjectBids = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, navigate]);
 
-    const scheduleInterview = async (details) => {
-        await api.interviews.schedule({ ...details, projectId: id, expertId: interviewBid.expert_id });
-        toast.success('Jitsi interview room created and shared with the expert.');
-    };
-
-    const fetchBids = async () => {
+    const fetchBids = useCallback(async () => {
         try {
             const bidsRes = await api.projects.getBids(id);
             setBids(bidsRes.bids || []);
         } catch (error) {
             console.error('Failed to fetch bids:', error);
         }
+    }, [id]);
+
+    useEffect(() => {
+        fetchData();
+
+        // Listen for new bids in real-time
+        const socket = socketService.connect();
+        socket.on('new_bid', (data) => {
+            if (data.projectId === id) {
+                toast.info(`New bid from ${data.expertName}!`);
+                fetchBids(); // Refresh bid list
+            }
+        });
+
+        return () => {
+            socket.off('new_bid');
+        };
+    }, [id, fetchBids, fetchData]);
+
+    const scheduleInterview = async (details) => {
+        await api.interviews.schedule({ ...details, projectId: id, expertId: interviewBid.expert_id });
+        toast.success('Jitsi interview room created and shared with the expert.');
     };
 
     const handleAcceptBid = async (bidId) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { Card } from '../../components/ui/Card';
@@ -20,13 +20,7 @@ const BidManagement = ({ projectId: propProjectId }) => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('pending');
 
-    useEffect(() => {
-        if (projectId) {
-            fetchProjectAndBids();
-        }
-    }, [projectId, filter]);
-
-    const fetchProjectAndBids = async () => {
+    const fetchProjectAndBids = useCallback(async () => {
         setLoading(true);
         try {
             const [projectRes, bidsRes] = await Promise.all([
@@ -41,7 +35,13 @@ const BidManagement = ({ projectId: propProjectId }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filter, projectId]);
+
+    useEffect(() => {
+        if (projectId) {
+            fetchProjectAndBids();
+        }
+    }, [projectId, fetchProjectAndBids]);
 
     const handleAcceptBid = async (bidId) => {
         if (!confirm('Are you sure you want to accept this bid? This will reject all other bids and assign the expert to your project.')) {

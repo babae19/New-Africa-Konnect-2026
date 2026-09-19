@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle, MapPin, Star, Search, User, FileText, Globe, ChevronRight } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
@@ -17,11 +17,7 @@ const Step2Match = ({ onNext, onInvitationSent, expertToHire }) => {
     const [inviting, setInviting] = useState(false);
     const [activeTab, setActiveTab] = useState('matches'); // 'matches' | 'applicants'
 
-    useEffect(() => {
-        loadData();
-    }, [currentProject]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             setLoading(true);
 
@@ -55,9 +51,13 @@ const Step2Match = ({ onNext, onInvitationSent, expertToHire }) => {
                 });
                 setSelectedExperts([expertToHire.user_id || expertToHire.id]);
             }
-            setTimeout(() => setStatsLoading(false), 2000);
+            setStatsLoading(false);
         }
-    };
+    }, [currentProject?.id, expertToHire]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
     const toggleExpert = (id) => {
         setSelectedExperts(prev => 

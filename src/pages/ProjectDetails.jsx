@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
@@ -16,7 +16,7 @@ import BidSubmissionModal from '../components/bidding/BidSubmissionModal';
 
 const ProjectDetails = () => {
     const { id } = useParams();
-    const { user, isExpert, isClient } = useAuth();
+    const { user, isExpert } = useAuth();
     const navigate = useNavigate();
 
     const [project, setProject] = useState(null);
@@ -24,11 +24,7 @@ const ProjectDetails = () => {
     const [isBidModalOpen, setIsBidModalOpen] = useState(false);
     const [hasAlreadyBid, setHasAlreadyBid] = useState(false);
 
-    useEffect(() => {
-        fetchProjectDetails();
-    }, [id]);
-
-    const fetchProjectDetails = async () => {
+    const fetchProjectDetails = useCallback(async () => {
         setLoading(true);
         try {
             const data = await api.projects.getById(id);
@@ -48,7 +44,11 @@ const ProjectDetails = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, isExpert, navigate]);
+
+    useEffect(() => {
+        fetchProjectDetails();
+    }, [fetchProjectDetails]);
 
     if (loading) {
         return (

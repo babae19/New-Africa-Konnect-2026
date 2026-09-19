@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../lib/api';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -13,13 +13,7 @@ const AutoScheduleModal = ({ isOpen, onClose, expertId, expertName, projectId, o
     const [submitting, setSubmitting] = useState(false);
     const [note, setNote] = useState('');
 
-    useEffect(() => {
-        if (isOpen && expertId) {
-            fetchAvailability();
-        }
-    }, [isOpen, expertId]);
-
-    const fetchAvailability = async () => {
+    const fetchAvailability = useCallback(async () => {
         try {
             setLoading(true);
             const data = await api.availability.getByExpert(expertId);
@@ -30,7 +24,13 @@ const AutoScheduleModal = ({ isOpen, onClose, expertId, expertName, projectId, o
         } finally {
             setLoading(false);
         }
-    };
+    }, [expertId]);
+
+    useEffect(() => {
+        if (isOpen && expertId) {
+            fetchAvailability();
+        }
+    }, [isOpen, expertId, fetchAvailability]);
 
     const getDaysSlots = (date) => {
         const dayOfWeek = date.getDay();
